@@ -1,0 +1,2 @@
+TWI_Slave Heizung_56_30
+22.8.09 l 813:  txbuffer[BRENNER]= ~(PINB & (1<< BRENNERPIN)); auskommentiert
