@@ -50,6 +50,7 @@
 
 #define MOTORPORT   PORTB
 #define MOTORDDR    DDRB
+#define MOTORPIN    PINB
 
 #define MOTOROUT      3
 #define MOTORDIR      4
@@ -64,6 +65,7 @@
 #define ADDRESSBIT   0
 #define DATABIT      2
 #define FUNKTIONBIT  4
+#define OLDRICHTUNGBIT  5
 #define RICHTUNGBIT  6
 
 #define TRIT0 0

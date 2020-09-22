@@ -26,7 +26,7 @@
 
 //***********************************
 						
-uint8_t  LOK_ADRESSE = 0x0F; //	11001100	Trinär
+uint8_t  LOK_ADRESSE = 0xCC; //	11001100	Trinär
 //									
 //***********************************
 
@@ -100,11 +100,11 @@ volatile uint8_t   lokstatus=0x00; // Funktion, Richtung
 volatile uint8_t   oldlokdata = 0;
 volatile uint8_t   lokdata = 0;
 volatile uint8_t   deflokdata = 0;
-volatile uint16_t   newlokdata = 0;
+//volatile uint16_t   newlokdata = 0;
 
-volatile uint32_t   rawdataA = 0;
-volatile uint32_t   rawdataB = 0;
-volatile uint32_t   oldrawdata = 0;
+volatile uint16_t   rawdataA = 0;
+volatile uint16_t   rawdataB = 0;
+//volatile uint32_t   oldrawdata = 0;
 
 volatile uint8_t   speed = 0;
 
@@ -112,13 +112,13 @@ volatile uint8_t   oldfunktion = 0;
 volatile uint8_t   funktion = 0;
 volatile uint8_t   deffunktion = 0;
 volatile uint8_t   waitcounter = 0;
-
+volatile uint8_t   richtungcounter = 0; // delay fuer Richtungsimpuls
 
 volatile uint8_t	Potwert=45;
 			//	Zaehler fuer richtige Impulsdauer
 //uint8_t				Servoposition[]={23,33,42,50,60};
 // Richtung invertiert
-volatile uint8_t				Servoposition[]={60,50,42,33,23};
+//volatile uint8_t				Servoposition[]={60,50,42,33,23};
 
 volatile uint16_t	taktimpuls=0;
 
@@ -180,7 +180,10 @@ void slaveinit(void)
    MOTORDDR |= (1<<MOTOROUT);  // Motor PWM
    MOTORPORT &= ~(1<<MOTOROUT); // LO
 
-   
+   MOTORDDR |= (1<<MOTORDIR);  // Motor PWM
+   MOTORPORT &= ~(1<<MOTORDIR); // LO
+
+  
 }
 
 
@@ -293,11 +296,13 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
    {
    //   MOTORPORT ^= (1<<MOTOROUT);
       MOTORPORT &= ~(1<<MOTOROUT);
+    //  MOTORPORT |= (1<<MOTOROUT);
    }
    if (motorPWM > 0xFF)
    {
       motorPWM = 0;
       MOTORPORT |= (1<<MOTOROUT);
+      //MOTORPORT &= ~(1<<MOTOROUT);
     }
 #pragma mark INT0
    if (INT0status & (1<<INT0_WAIT))
@@ -306,9 +311,23 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
       if (waitcounter > 2)
       {
          
+         
          INT0status &= ~(1<<INT0_WAIT);
           if (INT0status & (1<<INT0_PAKET_A))
           {
+             /*
+             if (richtungcounter> 1)
+             {
+                richtungcounter--;
+             }
+             else if (richtungcounter == 1)
+             {
+                //lokstatus |= (1<<OLDRICHTUNGBIT);
+               // lokstatus &= ~(1<<RICHTUNGBIT);
+                
+                richtungcounter = 0;
+             }
+             */
              TESTPORT &= ~(1<<TEST1);
              if (tritposition < 8) // Adresse)
              {
@@ -400,7 +419,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
             // Paket A?
             if (INT0status & (1<<INT0_PAKET_A)) // erstes Paket, Werte speichern
             {
-               oldrawdata = rawdataA;
+               //oldrawdata = rawdataA;
                //rawdataA = 0;
                //STATUSPORT ^= (1<<FUNKTIONOK);
                oldfunktion = funktion;
@@ -435,7 +454,16 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                      //deflokadresse = rawdataA & 0xFF;
                      deflokadresse = lokadresseB;
                      deffunktion = (rawdataB & 0x03); // bit 0,1
-                       
+                     if (deffunktion)
+                     {
+                        lokstatus |= (1<<FUNKTIONBIT);
+                        STATUSPORT |= (1<<FUNKTIONOK); // HI
+                     }
+                     else
+                     {
+                        lokstatus &= ~(1<<FUNKTIONBIT);
+                        STATUSPORT &= ~(1<<FUNKTIONOK); // LO
+                     }
                      for (uint8_t i=0;i<8;i++)
                      {
                         if ((rawdataB & (1<<(2+i))))
@@ -447,69 +475,92 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                            deflokdata &= ~(1<<i);
                         }
                      }
-                     
-                      
-                     if (deflokdata == 0x03) // Richtung toggle
+                        
+                     // Richtung
+                     if (deflokdata == 0x03) // Wert 1, Richtung togglen
                      {
-                        lokstatus ^= (1<<RICHTUNGBIT);
-                        MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
-                     }
-                     else if (deflokdata == 0)
-                     {
-                        speed = 0;
+                        /*
+                         if (lokstatus & (1<<OLDRICHTUNGBIT)) //Warten auf reset durch master
+                         {
+                         // nichts tun
+                         }
+                         else if (!(lokstatus & (1<<RICHTUNGBIT))) // Bit noch  nicht gesetzt
+                         {
+                         
+                         lokstatus |= (1<<RICHTUNGBIT);
+                         richtungcounter = 0xFF;
+                         MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
+                         }
+                         */
+                        if (!(lokstatus & (1<<RICHTUNGBIT)))
+                        {
+                           lokstatus |= (1<<RICHTUNGBIT);
+                           richtungcounter = 0xFF;
+                           MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
+                        }
                      }
                      else 
-                     {
-                        switch (deflokdata)
-                        {
-                           case 0x0C:
-                              speed = 1;
-                              break;
-                           case 0x0F:
-                              speed = 2;
-                              break;
-                           case 0x30:
-                              speed = 3;
-                              break;
-                           case 0x33:
-                              speed = 4;
-                              break;
-                           case 0x3C:
-                              speed = 5;
-                              break;
-                           case 0x3F:
-                              speed = 6;
-                              break;
-                           case 0xC0:
-                              speed = 7;
-                              break;
-                           case 0xC3:
-                              speed = 8;
-                              break;
-                           case 0xCC:
-                              speed = 9;
-                              break;
-                           case 0xCF:
-                              speed = 10;
-                              break;
-                           case 0xF0:
-                              speed = 11;
-                              break;
-                           case 0xF3:
-                              speed = 12;
-                              break;
-                           case 0xFC:
-                              speed = 13;
-                              break;
-                           case 0xFF:
-                              speed = 14;
-                              break;
-                              
-                        }
-                        speed *= 18;
+                     {  
+                        lokstatus &= ~(1<<RICHTUNGBIT); 
                         
-                     } // 
-                     
+                        if (deflokdata == 0)
+                        {
+                           
+                           speed = 0;
+                        }
+                        else 
+                        {
+                           
+                           switch (deflokdata)
+                           {
+                              case 0x0C:
+                                 speed = 1;
+                                 break;
+                              case 0x0F:
+                                 speed = 2;
+                                 break;
+                              case 0x30:
+                                 speed = 3;
+                                 break;
+                              case 0x33:
+                                 speed = 4;
+                                 break;
+                              case 0x3C:
+                                 speed = 5;
+                                 break;
+                              case 0x3F:
+                                 speed = 6;
+                                 break;
+                              case 0xC0:
+                                 speed = 7;
+                                 break;
+                              case 0xC3:
+                                 speed = 8;
+                                 break;
+                              case 0xCC:
+                                 speed = 9;
+                                 break;
+                              case 0xCF:
+                                 speed = 10;
+                                 break;
+                              case 0xF0:
+                                 speed = 11;
+                                 break;
+                              case 0xF3:
+                                 speed = 12;
+                                 break;
+                              case 0xFC:
+                                 speed = 13;
+                                 break;
+                              case 0xFF:
+                                 speed = 14;
+                                 break;
+                                 
+                           }
+                           speed *= 18;
+                           
+                        } // 
+                     }
                      
                      // rawdataA = 0;
                   }
@@ -737,14 +788,14 @@ void main (void)
             
          }
           */
+         
          lcd_gotoxy(4,3);
          lcd_puthex(deflokdata);
-         lcd_putc('*');
+         lcd_putc(' ');
          
-         if (deffunktion)
+         if (lokstatus & (1<<FUNKTIONBIT))
          {
             lcd_putc('1');
-         //lcd_puthex(deffunktion);
          }
          else
          {
@@ -755,7 +806,8 @@ void main (void)
          lcd_putc(' ');
          lcd_putint(speed);
          lcd_putc(' ');
-         if (lokstatus &(1<<RICHTUNGBIT))
+         //if (lokstatus &(1<<RICHTUNGBIT))
+         if (MOTORPIN & (1<<MOTORDIR))
          {
             lcd_putc('V');
          }
