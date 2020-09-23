@@ -242,7 +242,7 @@ void timer2 (uint8_t wert)
 	
 	OCR2 = wert;					//Setzen des Compare Registers auf HIimpulsdauer
 } 
-
+#pragma mark INT0
 ISR(INT0_vect) 
 {
    //OSZIATOG;
@@ -286,7 +286,7 @@ ISR(INT0_vect)
    }
 }
 
-
+#pragma mark ISR Timer2
 
 ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
 {
@@ -304,7 +304,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
       MOTORPORT |= (1<<MOTOROUT);
       //MOTORPORT &= ~(1<<MOTOROUT);
     }
-#pragma mark INT0
+
    if (INT0status & (1<<INT0_WAIT))
    {
       waitcounter++;
