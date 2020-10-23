@@ -180,7 +180,7 @@ void slaveinit(void)
    MOTORDDR |= (1<<MOTOROUT);  // Motor PWM
    MOTORPORT &= ~(1<<MOTOROUT); // LO
 
-   MOTORDDR |= (1<<MOTORDIR);  // Motor PWM
+   MOTORDDR |= (1<<MOTORDIR);  // Motor Dir
    MOTORPORT &= ~(1<<MOTORDIR); // LO
 
   
@@ -295,8 +295,8 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
    if (motorPWM > speed)
    {
    //   MOTORPORT ^= (1<<MOTOROUT);
-      MOTORPORT &= ~(1<<MOTOROUT);
-    //  MOTORPORT |= (1<<MOTOROUT);
+      MOTORPORT &= ~(1<<MOTOROUT); // active LO
+    //  MOTORPORT |= (1<<MOTOROUT); // active HI
    }
    if (motorPWM > 0xFF)
    {
@@ -496,6 +496,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                         {
                            lokstatus |= (1<<RICHTUNGBIT);
                            richtungcounter = 0xFF;
+                           speed = 0;
                            MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
                         }
                      }
@@ -569,6 +570,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                      STATUSPORT &= ~(1<<ADDRESSOK);
                      STATUSPORT &= ~(1<<DATAOK); // LED OFF
                      // aussteigen
+                     deflokadresse = 0xFF;
                      deflokdata = 0xCA;
                      INT0status == 0;
                      return;
@@ -710,7 +712,7 @@ void main (void)
    lcd_puthex(LOK_ADRESSE);
    
    //lcd_gotoxy(0,2);
-   lcd_puts(" adr IN");
+   lcd_puts(" adrIN");
 
    //lcd_gotoxy(0,2);
    
