@@ -9,7 +9,7 @@
 
 
 #include <avr/io.h>
-#include <avr/delay.h>
+#include <util/delay.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 //#include <avr/sleep.h>
@@ -270,6 +270,10 @@ ISR(INT0_vect)
       
       HIimpulsdauer = 0;
       
+      // A85
+ 
+      
+      // A85
    } 
    
    else // Data im Gang, neuer Interrupt
@@ -290,7 +294,7 @@ ISR(INT0_vect)
 
 ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
 {
-
+   
    motorPWM++;
    if (motorPWM > speed)
    {
@@ -311,7 +315,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
       if (waitcounter > 2)
       {
          
-         
+         //OSZIATOG;
          INT0status &= ~(1<<INT0_WAIT);
           if (INT0status & (1<<INT0_PAKET_A))
           {
@@ -381,7 +385,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                   rawdataB |= (1<<tritposition-8); // bit ist 1
                   if ((tritposition > 9) )
                   {
-   //                  lokdata |= (1<<((tritposition - 10))); // bit ist 1
+                     lokdata |= (1<<((tritposition - 10))); // bit ist 1
                   }
                }
                else 
@@ -389,7 +393,6 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                   rawdataB &= ~(1<<tritposition-8); // bit ist 0
                   if ((tritposition > 9) )
                   {
-   //                  lokdata &= ~(1<<((tritposition - 10))); // bit ist 1
                   }
                }
             }
@@ -446,6 +449,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
 #pragma mark EQUAL
                if ((rawdataA == rawdataB) && (lokadresseA == lokadresseB)) // Lokadresse und Data OK
                {
+                  
                   if (lokadresseB == LOK_ADRESSE)
                   {
                      // Daten uebernehmen
@@ -716,7 +720,7 @@ void main (void)
 
    //lcd_gotoxy(0,2);
    
-   lcd_gotoxy(0,3);
+   //lcd_gotoxy(0,3);
    //lcd_puts("data ");
 
 
@@ -731,7 +735,7 @@ void main (void)
 			loopcount0=0;
 			LOOPLEDPORT ^=(1<<LOOPLED);
          
-         lcd_gotoxy(14,1);
+         lcd_gotoxy(13,1);
  			lcd_puthex(deflokadresse);
          
 			//delay_ms(10);
@@ -791,7 +795,7 @@ void main (void)
          }
           */
          
-         lcd_gotoxy(4,3);
+         lcd_gotoxy(0,3);
          lcd_puthex(deflokdata);
          lcd_putc(' ');
          
@@ -803,8 +807,6 @@ void main (void)
          {
             lcd_putc('0');
          }
-         lcd_putc(' ');
-         lcd_puthex(deflokdata);
          lcd_putc(' ');
          lcd_putint(speed);
          lcd_putc(' ');
