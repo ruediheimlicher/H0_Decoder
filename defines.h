@@ -42,6 +42,7 @@
 
 #define STATUSPORT   PORTC
 #define STATUSDDR    DDRC
+#define STATUSPIN    PINC
 
 // Pins
 #define FUNKTIONOK   2
@@ -84,5 +85,8 @@
 #define INT0_PAKET_A 4
 #define INT0_PAKET_B 5
 
+
+#define LAMPE         2
+#define MEM         3 // Eingang fuer last richtung (Kondensator)
 
 #endif /* defines_h */

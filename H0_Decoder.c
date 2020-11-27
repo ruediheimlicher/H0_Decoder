@@ -79,14 +79,15 @@ volatile uint8_t   data=0x00;
 
 
 
-volatile uint16_t	HIimpulsdauer=00;			//	Dauer des LOimpulsdaueres Definitiv
+//volatile uint16_t	HIimpulsdauer=0;			//	Dauer des LOimpulsdaueres Definitiv
+
 volatile uint8_t	HIimpulsdauerPuffer=22;		//	Puffer fuer HIimpulsdauer
 volatile uint8_t	HIimpulsdauerSpeicher=0;		//	Speicher  fuer HIimpulsdauer
 
 volatile uint8_t   LOimpulsdauerOK=0;   
 
-volatile uint16_t   pausecounter = 0; //  neue Šdaten detektieren
-volatile uint16_t   abstandcounter = 0; // zweites Paket detektieren
+volatile uint8_t   pausecounter = 0; //  neue Šdaten detektieren
+volatile uint8_t   abstandcounter = 0; // zweites Paket detektieren
 
 volatile uint8_t   tritposition = 0; // nummer des trit im Paket
 volatile uint8_t   lokadresse = 0;
@@ -102,10 +103,16 @@ volatile uint8_t   lokdata = 0;
 volatile uint8_t   deflokdata = 0;
 //volatile uint16_t   newlokdata = 0;
 
-volatile uint16_t   rawdataA = 0;
-volatile uint16_t   rawdataB = 0;
+volatile uint8_t   rawdataA = 0;
+volatile uint8_t   rawdataB = 0;
 //volatile uint32_t   oldrawdata = 0;
 
+// ***
+volatile uint8_t   rawfunktionA = 0;
+volatile uint8_t   rawfunktionB = 0;
+
+
+// ***
 volatile uint8_t   speed = 0;
 
 volatile uint8_t   oldfunktion = 0;
@@ -129,7 +136,39 @@ uint8_t EEMEM WDT_ErrCount;	// Akkumulierte WDT Restart Events
 
 
 
+// linear
+//volatile uint8_t   speedlookup[15] = {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252};
 
+
+//volatile uint8_t   speedlookup[15] = {0,10,20,30,40,50,60,70,80,90,100,110,120,130,140};
+// linear 100
+//volatile uint8_t   speedlookup[15] = {0,7,14,21,28,35,42,50,57,64,71,78,85,92,100};
+
+// linear 80
+//volatile uint8_t   speedlookup[15] = {0,5,11,17,22,28,34,40,45,51,57,62,68,74,80};
+
+// linear mit offset 30
+//volatile uint8_t   speedlookup[15] = {0,33,37,40,44,47,51,55,58,62,65,69,72,76,80};
+
+// linear mit offset 22
+//volatile uint8_t   speedlookup[15] = {0,26,30,34,38,42,46,51,55,59,63,67,71,75,80};
+
+// linear mit offset 20
+volatile uint8_t   speedlookup[15] = {0,24,28,32,37,41,45,50,54,58,62,67,71,75,80};
+
+// logarithmisch 180
+//volatile uint8_t   speedlookup[14] = {0,46,73,92,106,119,129,138,146,153,159,165,170,175,180};
+
+//log 160
+//volatile uint8_t   speedlookup[14] = {0,40,64,81,95,105,114,122,129,136,141,146,151,155,160};
+
+// log 140
+//volatile uint8_t   speedlookup[14] = {0,35,56,71,83,92,100,107,113,119,123,128,132,136,140};
+
+// log 100
+//volatile uint8_t   speedlookup[14] = {0,25,40,51,59,66,71,76,81,85,88,91,94,97,100};
+
+uint8_t loopledtakt = 0x0A;
 
 
 
@@ -177,6 +216,10 @@ void slaveinit(void)
    STATUSDDR |= (1<<FUNKTIONOK);  // Data ist OK
    STATUSPORT &= ~(1<<FUNKTIONOK); // LO
 
+   STATUSDDR &= ~(1<<MEM);  // Eingang Mem-Status (last richtung)
+  
+
+   
    MOTORDDR |= (1<<MOTOROUT);  // Motor PWM
    MOTORPORT &= ~(1<<MOTOROUT); // LO
 
@@ -268,7 +311,11 @@ ISR(INT0_vect)
       lokdata = 0;
       funktion = 0;
       
-      HIimpulsdauer = 0;
+  //    rawdataA = 0;
+  //    rawdataB = 0;
+
+      
+//      HIimpulsdauer = 0;
       
       // A85
  
@@ -294,77 +341,72 @@ ISR(INT0_vect)
 
 ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
 {
-   
-   motorPWM++;
-   if (motorPWM > speed)
+   //OSZIATOG;
+   if (speed)
    {
-   //   MOTORPORT ^= (1<<MOTOROUT);
-      MOTORPORT &= ~(1<<MOTOROUT); // active LO
-    //  MOTORPORT |= (1<<MOTOROUT); // active HI
+      motorPWM++;
    }
-   if (motorPWM > 0xFF)
+   if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
+      MOTORPORT |= (1<<MOTOROUT); // OFF, Motor ist active LO
+      
+   }
+   
+   if (motorPWM >= 254) //ON, neuer Motorimpuls
+   {
+      MOTORPORT &= ~(1<<MOTOROUT);
       motorPWM = 0;
-      MOTORPORT |= (1<<MOTOROUT);
-      //MOTORPORT &= ~(1<<MOTOROUT);
-    }
-
+   }
+   
+   
+#pragma mark TIMER0 INT0
    if (INT0status & (1<<INT0_WAIT))
    {
       waitcounter++;
       if (waitcounter > 2)
       {
-         
-         //OSZIATOG;
          INT0status &= ~(1<<INT0_WAIT);
-          if (INT0status & (1<<INT0_PAKET_A))
-          {
-             /*
-             if (richtungcounter> 1)
-             {
-                richtungcounter--;
-             }
-             else if (richtungcounter == 1)
-             {
-                //lokstatus |= (1<<OLDRICHTUNGBIT);
-               // lokstatus &= ~(1<<RICHTUNGBIT);
-                
-                richtungcounter = 0;
-             }
-             */
-             TESTPORT &= ~(1<<TEST1);
-             if (tritposition < 8) // Adresse)
-             {
-                
-                if (INPIN & (1<<DATAPIN)) // Pin HI, 
-                {
-                   lokadresseA |= (1<<tritposition); // bit ist 1
-                }
-                else // 
-                {
-                   lokadresseA &= ~(1<<tritposition); // bit ist 0
-                }
-                //tritposition ++;
-             }
-             else
-             {
-
-             if (INPIN & (1<<DATAPIN)) // Pin HI, 
-             {
-                rawdataA |= (1<<(tritposition-8)); // bit ist 1
-             }
-             else // 
-             {
-                rawdataA &= ~(1<<(tritposition-8)); // bit ist 0
-             }
-             }
-             //TESTPORT |= (1<<TEST1);
-   
-          }
+         if (INT0status & (1<<INT0_PAKET_A))
+         {
+            if (tritposition < 8) // Adresse)
+            {
+               if (INPIN & (1<<DATAPIN)) // Pin HI, 
+               {
+                  lokadresseA |= (1<<tritposition); // bit ist 1
+               }
+               else // 
+               {
+                  lokadresseA &= ~(1<<tritposition); // bit ist 0
+               }
+            }
+            else if (tritposition < 10)
+            {
+               if (INPIN & (1<<DATAPIN)) // Pin HI, 
+               {
+                  rawfunktionA |= (1<<tritposition-8); // bit ist 1
+               }
+               else // 
+               {
+                  rawfunktionA &= ~(1<<tritposition-8); // bit ist 0
+               }
+               
+            }
+            
+            else
+            {
+               if (INPIN & (1<<DATAPIN)) // Pin HI, 
+               {
+                  rawdataA |= (1<<(tritposition-10)); // bit ist 1
+               }
+               else // 
+               {
+                  rawdataA &= ~(1<<(tritposition-10)); // bit ist 0
+               }
+            }
+         }
          
          if (INT0status & (1<<INT0_PAKET_B))
          {
-            TESTPORT &= ~(1<<TEST2);
             if (tritposition < 8) // Adresse)
             {
                
@@ -376,43 +418,50 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                {
                   lokadresseB &= ~(1<<tritposition); // bit ist 0
                }
-               //tritposition ++;
             }
+            else if (tritposition < 10) // bit 8,9: funktion
+            {
+               if (INPIN & (1<<DATAPIN)) // Pin HI, 
+               {
+                  rawfunktionB |= (1<<tritposition-8); // bit ist 1
+               }
+               else // 
+               {
+                  rawfunktionB &= ~(1<<tritposition-8); // bit ist 0
+               }
+               
+            }
+            
+            
             else
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
-                  rawdataB |= (1<<tritposition-8); // bit ist 1
-                  if ((tritposition > 9) )
-                  {
-                     lokdata |= (1<<((tritposition - 10))); // bit ist 1
-                  }
+                  rawdataB |= (1<<tritposition-10); // bit ist 1
                }
                else 
                {
-                  rawdataB &= ~(1<<tritposition-8); // bit ist 0
-                  if ((tritposition > 9) )
-                  {
-                  }
+                  rawdataB &= ~(1<<tritposition-10); // bit ist 0
                }
             }
             
-             if (!(lokadresseB == LOK_ADRESSE))
+            if (!(lokadresseB == LOK_ADRESSE))
             {
                
             }
          }
-        
-        
+         
+         // Paket anzeigen
          if (INT0status & (1<<INT0_PAKET_B))
          {
-            TESTPORT |= (1<<TEST2);
+            //           TESTPORT |= (1<<TEST2);
          }
          if (INT0status & (1<<INT0_PAKET_A))
          {
-            TESTPORT |= (1<<TEST1);
+            //           TESTPORT |= (1<<TEST1);
          }
-
+         
+         
          if (tritposition < 17)
          {
             tritposition ++;
@@ -422,55 +471,45 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
             // Paket A?
             if (INT0status & (1<<INT0_PAKET_A)) // erstes Paket, Werte speichern
             {
-               //oldrawdata = rawdataA;
-               //rawdataA = 0;
-               //STATUSPORT ^= (1<<FUNKTIONOK);
                oldfunktion = funktion;
-               //funktion = 0;
-                              
+               
                INT0status &= ~(1<<INT0_PAKET_A); // Bit fuer erstes Paket weg
-               OSZIPORT |= (1<<PAKETA); 
-               
-               
                INT0status |= (1<<INT0_PAKET_B); // Bit fuer zweites Paket setzen
-               OSZIPORT &= ~(1<<PAKETB);   
                tritposition = 0;
-               
             }
-            
             else if (INT0status & (1<<INT0_PAKET_B)) // zweites Paket, Werte testen
             {
-              
-               if (INT0status & (1<<INT0_PAKET_B))
-               {
-         //         TESTPORT &= ~(1<<TEST2);
-               }
-              
+               
+               
 #pragma mark EQUAL
-               if ((rawdataA == rawdataB) && (lokadresseA == lokadresseB)) // Lokadresse und Data OK
+               if (lokadresseA && ((rawfunktionA == rawfunktionB) && (rawdataA == rawdataB) && (lokadresseA == lokadresseB))) // Lokadresse > 0 und Lokadresse und Data OK
                {
-                  
                   if (lokadresseB == LOK_ADRESSE)
                   {
                      // Daten uebernehmen
-                     STATUSPORT |= (1<<DATAOK); // LED ON
-                     STATUSPORT |= (1<<ADDRESSOK); // LED ON
-                     //deflokadresse = rawdataA & 0xFF;
+                     //   STATUSPORT |= (1<<DATAOK); // LED ON
+                     //  STATUSPORT |= (1<<ADDRESSOK); // LED ON
+                     
+                     lokstatus |= (1<<ADDRESSBIT);
                      deflokadresse = lokadresseB;
-                     deffunktion = (rawdataB & 0x03); // bit 0,1
+                     //deffunktion = (rawdataB & 0x03); // bit 0,1 funktion als eigene var
+                     deffunktion = rawfunktionB;
+                     uint8_t speedcode = 0;
+                     
                      if (deffunktion)
                      {
                         lokstatus |= (1<<FUNKTIONBIT);
-                        STATUSPORT |= (1<<FUNKTIONOK); // HI
+                        STATUSPORT |= (1<<LAMPE);
                      }
                      else
                      {
                         lokstatus &= ~(1<<FUNKTIONBIT);
-                        STATUSPORT &= ~(1<<FUNKTIONOK); // LO
+                        STATUSPORT &= ~(1<<LAMPE);
                      }
                      for (uint8_t i=0;i<8;i++)
                      {
-                        if ((rawdataB & (1<<(2+i))))
+                        //if ((rawdataB & (1<<(2+i))))
+                        if ((rawdataB & (1<<i)))
                         {
                            deflokdata |= (1<<i);
                         }
@@ -479,162 +518,124 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                            deflokdata &= ~(1<<i);
                         }
                      }
-                        
+                     
                      // Richtung
                      if (deflokdata == 0x03) // Wert 1, Richtung togglen
                      {
-                        /*
-                         if (lokstatus & (1<<OLDRICHTUNGBIT)) //Warten auf reset durch master
-                         {
-                         // nichts tun
-                         }
-                         else if (!(lokstatus & (1<<RICHTUNGBIT))) // Bit noch  nicht gesetzt
-                         {
-                         
-                         lokstatus |= (1<<RICHTUNGBIT);
-                         richtungcounter = 0xFF;
-                         MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
-                         }
-                         */
                         if (!(lokstatus & (1<<RICHTUNGBIT)))
                         {
                            lokstatus |= (1<<RICHTUNGBIT);
                            richtungcounter = 0xFF;
                            speed = 0;
                            MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
+                           
                         }
                      }
                      else 
                      {  
                         lokstatus &= ~(1<<RICHTUNGBIT); 
-                        
-                        if (deflokdata == 0)
+#pragma mark speed                           
+                        switch (deflokdata)
                         {
-                           
-                           speed = 0;
+                           case 0:
+                              speedcode = 0;
+                              break;
+                           case 0x0C:
+                              speedcode = 1;
+                              break;
+                           case 0x0F:
+                              speedcode = 2;
+                              break;
+                           case 0x30:
+                              speedcode = 3;
+                              break;
+                           case 0x33:
+                              speedcode = 4;
+                              break;
+                           case 0x3C:
+                              speedcode = 5;
+                              break;
+                           case 0x3F:
+                              speedcode = 6;
+                              break;
+                           case 0xC0:
+                              speedcode = 7;
+                              break;
+                           case 0xC3:
+                              speedcode = 8;
+                              break;
+                           case 0xCC:
+                              speedcode = 9;
+                              break;
+                           case 0xCF:
+                              speedcode = 10;
+                              break;
+                           case 0xF0:
+                              speedcode = 11;
+                              break;
+                           case 0xF3:
+                              speedcode = 12;
+                              break;
+                           case 0xFC:
+                              speedcode = 13;
+                              break;
+                           case 0xFF:
+                              speedcode = 14;
+                              break;
+                           default:
+                              speedcode = 0;
+                              break;
+                              
                         }
-                        else 
-                        {
-                           
-                           switch (deflokdata)
-                           {
-                              case 0x0C:
-                                 speed = 1;
-                                 break;
-                              case 0x0F:
-                                 speed = 2;
-                                 break;
-                              case 0x30:
-                                 speed = 3;
-                                 break;
-                              case 0x33:
-                                 speed = 4;
-                                 break;
-                              case 0x3C:
-                                 speed = 5;
-                                 break;
-                              case 0x3F:
-                                 speed = 6;
-                                 break;
-                              case 0xC0:
-                                 speed = 7;
-                                 break;
-                              case 0xC3:
-                                 speed = 8;
-                                 break;
-                              case 0xCC:
-                                 speed = 9;
-                                 break;
-                              case 0xCF:
-                                 speed = 10;
-                                 break;
-                              case 0xF0:
-                                 speed = 11;
-                                 break;
-                              case 0xF3:
-                                 speed = 12;
-                                 break;
-                              case 0xFC:
-                                 speed = 13;
-                                 break;
-                              case 0xFF:
-                                 speed = 14;
-                                 break;
-                                 
-                           }
-                           speed *= 18;
-                           
-                        } // 
+                        speed = speedlookup[speedcode];
                      }
-                     
-                     // rawdataA = 0;
                   }
                   else 
                   {
-                     STATUSPORT &= ~(1<<ADDRESSOK);
-                     STATUSPORT &= ~(1<<DATAOK); // LED OFF
                      // aussteigen
-                     deflokadresse = 0xFF;
-                     deflokdata = 0xCA;
-                     INT0status == 0;
+                     //deflokdata = 0x17;
+                     INT0status = 0;
                      return;
-                     
                   }
-                  
                }
                else 
                {
-                  STATUSPORT &= ~(1<<ADDRESSOK);
-                  STATUSPORT &= ~(1<<DATAOK); // LED OFF
+                  lokstatus &= ~(1<<ADDRESSBIT);
                   // aussteigen
-                  deflokdata = 0xCA;
-                  INT0status == 0;
+                  //deflokdata = 0x13;
+                  INT0status = 0;
                   return;
-
+                  
                }
-          
-         //      INT0status &= ~(1<<INT0_PAKET_B); // Bit fuer zweites Paket weg
+               
                INT0status |= (1<<INT0_END);
-               OSZIPORT |= (1<<PAKETB);
+               //     OSZIPORT |= (1<<PAKETB);
                if (INT0status & (1<<INT0_PAKET_B))
                {
-   //               TESTPORT |= (1<<TEST2);
+                  //               TESTPORT |= (1<<TEST2);
                }
-               //tritposition = 0;
             } // End Paket B
-            
-  
-            
-            //INT0status == 0;
          }
-
+         
       } // waitcounter > 2
    } // if INT0_WAIT
-  
-   OSZIPORT |= (1<<INT_0);
+   
    if (INPIN & (1<<DATAPIN)) // Pin HI, input   im Gang
    {
-      HIimpulsdauer++; // zaehlen
+      //      HIimpulsdauer++; // zaehlen
    }
    else  // LO, input fertig, Bilanz
    {
       if (abstandcounter < 20)
       {
          abstandcounter++;
-       }
+      }
       else //if (abstandcounter ) // Paket 2
       {
          abstandcounter = 0;
-         OSZIAHI;
-        // tritposition = 0;
-   
-         
-   //      INT0status &= ~(1<<INT0_PAKET_A); // Bit fuer erstes Paket weg
-   //      OSZIPORT |= (1<<PAKETA); 
-
-         
-    //     INT0status |= (1<<INT0_PAKET_B); // Bit fuer zweites Paket setzen
-     //    OSZIPORT &= ~(1<<PAKETB);   
+         //   OSZIAHI;
+         //     OSZIPORT |= (1<<PAKETA); 
+         //    OSZIPORT &= ~(1<<PAKETB);   
       }
       
       if (pausecounter < 120)
@@ -643,36 +644,13 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
       }
       else 
       {
-         OSZIBHI; //pause detektiert
+         //OSZIBHI; //pause detektiert
          pausecounter = 0;
          INT0status = 0; //Neue Daten abwarten
          return;
       }
- 
-      /*
       
-      if (HIimpulsdauer < 4) // kurz
-      {
-         OSZIPORT |= (1<<INT_0);
-         //OSZIAHI;
-         HIimpulsdauer =0;
-      }
-      else if (HIimpulsdauer > 8) // lang
-      {
-         //OSZIBHI;
-         HIimpulsdauer = 0;
-         HIimpulsdauer = 0;
-      }
-      */
    } // input LO
-//		lcd_clr_line(1);
-//		lcd_puts("Timer2 Comp\0");
-//		TCCR2=0;
-//		SERVOPORT &= ~(1<<SERVOPIN0);//	SERVOPIN0 zuruecksetzen
-//		SERVOPORT &= ~(1<<5);// Kontrolle auf PIN D5 OFF
-		//delay_ms(800);
-		//lcd_clr_line(1);
-		
 }
 
 
@@ -680,6 +658,8 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
 
 void main (void) 
 {
+   
+   
 	slaveinit();
    
    int0_init();
@@ -700,8 +680,10 @@ void main (void)
 	//initADC(TASTATURPIN);
 	
 	
-	uint16_t loopcount0=0;
-	
+	//uint16_t loopcount0=0;
+   uint8_t loopcount0=0;
+   uint8_t loopcount1=0;
+
 	
 	_delay_ms(800);
 
@@ -730,60 +712,82 @@ void main (void)
 		wdt_reset();
 				//Blinkanzeige
 		loopcount0++;
-		if (loopcount0==0x0FFF)
+		if (loopcount0 >= loopledtakt)
 		{
 			loopcount0=0;
-			LOOPLEDPORT ^=(1<<LOOPLED);
          
-         lcd_gotoxy(13,1);
- 			lcd_puthex(deflokadresse);
-         
-			//delay_ms(10);
-         
-         if (deflokadresse == LOK_ADRESSE)
+         loopcount1++;
+         //if (loopcount1 >= loopledtakt)
          {
+            loopcount1 = 0;
+            LOOPLEDPORT ^=(1<<LOOPLED);
+         }   
+            lcd_gotoxy(13,1);
+            lcd_puthex(deflokadresse);
             
-            lcd_gotoxy(17,1);
-            lcd_puts("OK ");
-            //lcd_puthex(deflokadresse);
+            //delay_ms(10);
             
-         }
-       else 
-       {
-          lcd_gotoxy(17,1);
-          lcd_puts("Err");
-          //lcd_puthex(lokadresse);
-          
-       }
-          
+            if (deflokadresse == LOK_ADRESSE)
+            {
+               
+               lcd_gotoxy(17,1);
+               lcd_puts("OK ");
+               //lcd_puthex(deflokadresse);
+               
+            }
+            else 
+            {
+               lcd_gotoxy(17,1);
+               lcd_puts("Err");
+               //lcd_puthex(lokadresse);
+               
+            }
+            
 #pragma mark LCD
-         //uint8_t a = ((deflokdata >>4)& 0xFF);
-         /*
-         lcd_gotoxy(0,2);
-         lcd_puthex(a);
-         lcd_putc(' ');
-         a = ((deflokdata >>8)& 0xFF);
-         lcd_puthex(a);
-         lcd_putc(' ');
-         a = ((deflokdata >>12)& 0xFF);
-         lcd_puthex(a);
-         lcd_putc(' ');
-         lcd_puthex(newlokdata);
-         lcd_putc(' ');
-
-         lcd_putc('*');
-         lcd_puthex(oldlokdata);
-         lcd_putc(' ');
-
-         //lcd_puthex(rawdataA>>4);
-          */
-         
-         lcd_gotoxy(0,2);
-         // uint32_t b = 0xFFFFFFFF;
-         /*
-         for (uint8_t i=0;i<18;i++)
-         {
-            if (deflokdata & (1<<i))
+            //uint8_t a = ((deflokdata >>4)& 0xFF);
+            /*
+             lcd_gotoxy(0,2);
+             lcd_puthex(a);
+             lcd_putc(' ');
+             a = ((deflokdata >>8)& 0xFF);
+             lcd_puthex(a);
+             lcd_putc(' ');
+             a = ((deflokdata >>12)& 0xFF);
+             lcd_puthex(a);
+             lcd_putc(' ');
+             lcd_puthex(newlokdata);
+             lcd_putc(' ');
+             
+             lcd_putc('*');
+             lcd_puthex(oldlokdata);
+             lcd_putc(' ');
+             
+             //lcd_puthex(rawdataA>>4);
+             */
+            
+            lcd_gotoxy(0,2);
+            // uint32_t b = 0xFFFFFFFF;
+            /*
+             for (uint8_t i=0;i<18;i++)
+             {
+             if (deflokdata & (1<<i))
+             {
+             lcd_putc('1');
+             }
+             else
+             {
+             lcd_putc('0');
+             }
+             
+             }
+             */
+            
+            lcd_gotoxy(0,3);
+            lcd_puthex(deflokdata);
+            lcd_putc(' ');
+            
+          //  if (lokstatus & (1<<FUNKTIONBIT))
+            if ( STATUSPIN & (1<<LAMPE))
             {
                lcd_putc('1');
             }
@@ -791,54 +795,38 @@ void main (void)
             {
                lcd_putc('0');
             }
-            
-         }
-          */
-         
-         lcd_gotoxy(0,3);
-         lcd_puthex(deflokdata);
-         lcd_putc(' ');
-         
-         if (lokstatus & (1<<FUNKTIONBIT))
-         {
-            lcd_putc('1');
-         }
-         else
-         {
-            lcd_putc('0');
-         }
-         lcd_putc(' ');
-         lcd_putint(speed);
-         lcd_putc(' ');
-         //if (lokstatus &(1<<RICHTUNGBIT))
-         if (MOTORPIN & (1<<MOTORDIR))
-         {
-            lcd_putc('V');
-         }
-         else
-         {
-            lcd_putc('R');
-         }
-         lcd_gotoxy(0,0);
-         /*
-        // uint32_t b = 0xFFFFFFFF;
-         for (uint8_t i=0;i<18;i++)
-         {
-            if (rawdataB & (1<<i))
+            lcd_putc(' ');
+            lcd_putint(speed);
+            lcd_putc(' ');
+            //if (lokstatus &(1<<RICHTUNGBIT))
+            if (MOTORPIN & (1<<MOTORDIR))
             {
-             lcd_putc('1');
+               lcd_putc('V');
             }
-              
+            else
+            {
+               lcd_putc('R');
+            }
+           // lcd_gotoxy(0,0);
+            /*
+             // uint32_t b = 0xFFFFFFFF;
+             for (uint8_t i=0;i<18;i++)
+             {
+             if (rawdataB & (1<<i))
+             {
+             lcd_putc('1');
+             }
+             
              else
              {
-                lcd_putc('0');
+             lcd_putc('0');
              }
-                
-         }
-         */
-         uint16_t tempBuffer=0;
+             
+             }
+             */
+         
 			
-		}
+		} // loopcount0 >= loopledtakt
 		
 	}//while
 
