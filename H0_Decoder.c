@@ -288,7 +288,7 @@ void timer2 (uint8_t wert)
 #pragma mark INT0
 ISR(INT0_vect) 
 {
-   //OSZIATOG;
+   OSZIATOG;
    if (INT0status == 0) // neue Daten beginnen
    {
       INT0status |= (1<<INT0_START);
