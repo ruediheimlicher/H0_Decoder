@@ -670,7 +670,7 @@ void main (void)
 	lcd_puts("Guten Tag\0");
 	_delay_ms(1000);
 	lcd_cls();
-	lcd_puts("H0-Interface\0");
+	lcd_puts("H0-Decoder A8");
 	
    
 	//timer0();
