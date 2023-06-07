@@ -234,14 +234,16 @@ void slaveinit(void)
 
 void int0_init(void)
 {
-   MCUCR = (1<<ISC00 | (1<<ISC01)); // raise int0 on rising edge
-   GICR |= (1<<INT0); // enable external int0
+   //MCUCR = (1<<ISC00 | (1<<ISC01)); // raise int0 on rising edge
+   EICRA |= (1 << ISC00) | (1 << ISC01);  // Trigger interrupt on any logical change
+   EIMSK |= (1 << INT0);  // Enable external interrupt INT0
+
  //  INT0status |= (1<<INT0_RISING);
    INT0status = 0;
 }
 
 
-
+/*
 void timer0 (void) 
 { 
 // Timer fuer Exp
@@ -258,7 +260,7 @@ TCCR0 |= (1<<CS00)|(1<<CS02);	//Takt /1024
 	TCNT0 = 0x00;					//RŸcksetzen des Timers
   
 }
-
+*/
 /*
 ISR(TIMER0_COMP_vect) 
 {
@@ -272,18 +274,18 @@ void timer2 (uint8_t wert)
 //Takt fuer Servo
 //	TCCR2 |= (1<<CS20)|(1<<CS21);	//Takt /64	Intervall 64 us
 
-	TCCR2 |= (1<<WGM21);		//	ClearTimerOnCompareMatch CTC
-   TCCR2 |= (1<<CS00); // no prescaler
+	TCCR2B |= (1<<WGM21);		//	ClearTimerOnCompareMatch CTC
+   TCCR2B |= (1<<CS00); // no prescaler
 	//OC2 akt
 //	TCCR2 |= (1<<COM20);		//	OC2 Pin zuruecksetzen bei CTC
 
 
-	TIFR |= (1<<TOV2); 				//Clear TOV2 Timer/Counter Overflow Flag. clear pending interrupts
-	TIMSK |= (1<<OCIE2);			//CTC Interrupt aktivieren
-
+	//TIFR |= (1<<TOV2); 				//Clear TOV2 Timer/Counter Overflow Flag. clear pending interrupts
+	TIMSK2 |= (1<<OCIE2A);			//CTC Interrupt aktivieren
+   TIMSK2 |=(1<<TOIE2);        //interrupt on Compare Match A
 	TCNT2 = 0x00;					//Zaehler zuruecksetzen
 	
-	OCR2 = wert;					//Setzen des Compare Registers auf HIimpulsdauer
+	OCR2A = wert;					//Setzen des Compare Registers auf HIimpulsdauer
 } 
 #pragma mark INT0
 ISR(INT0_vect) 
