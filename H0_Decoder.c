@@ -174,6 +174,7 @@ uint8_t loopledtakt = 0x0A;
 
 void slaveinit(void)
 {
+   
  	OSZIPORT |= (1<<OSZIA);	//Pin 6 von PORT D als Ausgang fuer OSZI A
 	OSZIDDR |= (1<<OSZIA);	//Pin 7 von PORT D als Ausgang fuer SOSZI B
    OSZIPORT |= (1<<OSZIB);   //Pin 6 von PORT D als Ausgang fuer OSZI A
@@ -200,12 +201,9 @@ void slaveinit(void)
  	LCD_DDR |= (1<<LCD_ENABLE_PIN);	//Pin 6 von PORT B als Ausgang fuer LCD
 	LCD_DDR |= (1<<LCD_CLOCK_PIN);	//Pin 7 von PORT B als Ausgang fuer LCD
 
+   
    TESTDDR |= (1<<TEST0); // test0
    TESTPORT |= (1<<TEST0); // HI
-   TESTDDR |= (1<<TEST1); // test1 
-   TESTPORT |= (1<<TEST1); // HI
-	TESTDDR |= (1<<TEST2); // test2
-   TESTPORT |= (1<<TEST2); // HI
    
    
    STATUSDDR |= (1<<ADDRESSOK); // Adresse ist OK
@@ -220,14 +218,21 @@ void slaveinit(void)
   
 
    
-   MOTORDDR |= (1<<MOTOROUT);  // Motor PWM
-   MOTORPORT &= ~(1<<MOTOROUT); // LO
+   MOTORDDR |= (1<<MOTORA);  // Motor A
+   MOTORPORT &= ~(1<<MOTORA); // LO
 
+   MOTORDDR |= (1<<MOTORB);  // Motor B
+   MOTORPORT &= ~(1<<MOTORB); // LO
+
+   
    MOTORDDR |= (1<<MOTORDIR);  // Motor Dir
    MOTORPORT &= ~(1<<MOTORDIR); // LO
 
-   STATUSDDR |= (1<<LAMPE);  // Data ist OK
-   STATUSPORT &= ~(1<<LAMPE); // LO
+   //STATUSDDR |= (1<<LAMPE);  // Data ist OK
+   //STATUSPORT &= ~(1<<LAMPE); // LO
+
+   LAMPEDDR |= (1<<LAMPE);  // Data ist OK
+   LAMPEPORT &= ~(1<<LAMPE); // LO
 
    initADC(MEM);
    
@@ -240,7 +245,6 @@ void slaveinit(void)
 
 void int0_init(void)
 {
-   //MCUCR = (1<<ISC00 | (1<<ISC01)); // raise int0 on rising edge
    EICRA |= (1 << ISC00) | (1 << ISC01);  // Trigger interrupt on any logical change
    EIMSK |= (1 << INT0);  // Enable external interrupt INT0
 
@@ -333,13 +337,13 @@ ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
    }
    if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
-      MOTORPORT |= (1<<MOTOROUT); // OFF, Motor ist active LO
+      MOTORPORT |= (1<<MOTORA); // OFF, Motor ist active LO
       
    }
    
    if (motorPWM >= 254) //ON, neuer Motorimpuls
    {
-      MOTORPORT &= ~(1<<MOTOROUT);
+      MOTORPORT &= ~(1<<MOTORA);
       motorPWM = 0;
    }
    
@@ -368,11 +372,11 @@ ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
-                  rawfunktionA |= (1<<tritposition-8); // bit ist 1
+                  rawfunktionA |= (1<<(tritposition-8)); // bit ist 1
                }
                else // 
                {
-                  rawfunktionA &= ~(1<<tritposition-8); // bit ist 0
+                  rawfunktionA &= ~(1<<(tritposition-8)); // bit ist 0
                }
                
             }
@@ -408,11 +412,11 @@ ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
-                  rawfunktionB |= (1<<tritposition-8); // bit ist 1
+                  rawfunktionB |= (1<<(tritposition-8)); // bit ist 1
                }
                else // 
                {
-                  rawfunktionB &= ~(1<<tritposition-8); // bit ist 0
+                  rawfunktionB &= ~(1<<(tritposition-8)); // bit ist 0
                }
                
             }
@@ -422,11 +426,11 @@ ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
-                  rawdataB |= (1<<tritposition-10); // bit ist 1
+                  rawdataB |= (1<<(tritposition-10)); // bit ist 1
                }
                else 
                {
-                  rawdataB &= ~(1<<tritposition-10); // bit ist 0
+                  rawdataB &= ~(1<<(tritposition-10)); // bit ist 0
                }
             }
             
@@ -484,12 +488,15 @@ ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
                      if (deffunktion)
                      {
                         lokstatus |= (1<<FUNKTIONBIT);
-                        STATUSPORT |= (1<<LAMPE);
+                        LAMPEPORT |= (1<<LAMPE);
+                        
+                        OSZIBLO;
                      }
                      else
                      {
                         lokstatus &= ~(1<<FUNKTIONBIT);
-                        STATUSPORT &= ~(1<<LAMPE);
+                        LAMPEPORT &= ~(1<<LAMPE);
+                        OSZIBHI;
                      }
                      for (uint8_t i=0;i<8;i++)
                      {
@@ -574,7 +581,7 @@ ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
                         }
                         speed = speedlookup[speedcode];
                      }
-                     MEMBuffer=(readKanal(MEM));
+                     //MEMBuffer=(readKanal(MEM));
                   }
                   else 
                   {
@@ -772,8 +779,8 @@ void main (void)
             lcd_puthex(deflokdata);
             lcd_putc(' ');
             
-          //  if (lokstatus & (1<<FUNKTIONBIT))
-            if ( STATUSPIN & (1<<LAMPE))
+            if (lokstatus & (1<<FUNKTIONBIT))
+           // if ( STATUSPIN & (1<<LAMPE))
             {
                lcd_putc('1');
             }
@@ -781,6 +788,15 @@ void main (void)
             {
                lcd_putc('0');
             }
+            if ( LAMPEPIN & (1<<LAMPE))
+            {
+               lcd_putc('1');
+            }
+            else
+            {
+               lcd_putc('0');
+            }
+         
             lcd_putc(' ');
             lcd_putint(speed);
             lcd_putc(' ');

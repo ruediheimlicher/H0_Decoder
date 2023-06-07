@@ -37,7 +37,7 @@
 
 #define TEST0     0
 #define TEST1     1
-#define TEST2     2
+
 
 
 #define STATUSPORT   PORTC
@@ -53,8 +53,9 @@
 #define MOTORDDR    DDRB
 #define MOTORPIN    PINB
 
-#define MOTOROUT      3
-#define MOTORDIR      4
+#define MOTORA      2
+#define MOTORB      3
+#define MOTORDIR 1
 
 // lokstatus-Bits
 #define FUNKTION     0
@@ -86,8 +87,12 @@
 #define INT0_PAKET_B 5
 
 
-#define LAMPE         2
-#define MEM         4 // Eingang fuer last richtung (Kondensator)
+#define LAMPEPORT PORTD
+#define LAMPEDDR  DDRD
+#define LAMPEPIN   PIND
+
+#define LAMPE         3
+#define MEM           6 // Eingang fuer last richtung (Kondensator)
 
 
 
