@@ -9,7 +9,7 @@
 
 
 #include <avr/io.h>
-#include <avr/delay.h>
+#include <util/delay.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 //#include <avr/sleep.h>
@@ -17,6 +17,7 @@
 #include <inttypes.h>
 #include <avr/wdt.h>
 #include "defines.h"
+#include <stdint.h>
 
 //#include "twislave.c"
 #include "lcd.c"
@@ -37,9 +38,9 @@ uint8_t  LOK_ADRESSE = 0xCC; //	11001100	Trinär
  */
 
 
-#define OUTPORT	PORTD		// Ausgang fuer Motor
+//#define OUTPORT	PORTD		// Ausgang fuer Motor
 
-#define INPORT   PORTD  // Input signal auf INT0
+//#define INPORT   PORTD  // Input signal auf INT0
 #define INPIN   PIND  // Input signal
 
 #define DATAPIN  2 
@@ -75,43 +76,56 @@ volatile uint8_t   address=0x00;
 volatile uint8_t   data=0x00;   
 
 
-volatile uint16_t	HICounter=0;					//	Abstand der Impulspakete
-volatile uint16_t	LOCounter=0x00;				//	Zaehler fuer Pause
-volatile uint16_t	LOimpulsdauer=0x00;				//	Zaehler fuer Impuls
 
 
 
-volatile uint16_t	HIimpulsdauer=00;			//	Dauer des LOimpulsdaueres Definitiv
+//volatile uint16_t	HIimpulsdauer=0;			//	Dauer des LOimpulsdaueres Definitiv
+
 volatile uint8_t	HIimpulsdauerPuffer=22;		//	Puffer fuer HIimpulsdauer
 volatile uint8_t	HIimpulsdauerSpeicher=0;		//	Speicher  fuer HIimpulsdauer
 
 volatile uint8_t   LOimpulsdauerOK=0;   
 
-volatile uint16_t   pausecounter = 0; //  neue ädaten detektieren
-volatile uint16_t   abstandcounter = 0; // zweites Paket detektieren
+volatile uint8_t   pausecounter = 0; //  neue ädaten detektieren
+volatile uint8_t   abstandcounter = 0; // zweites Paket detektieren
 
 volatile uint8_t   tritposition = 0; // nummer des trit im Paket
 volatile uint8_t   lokadresse = 0;
-volatile uint8_t    lokstatus=0x00; // Funktion, Richtung
+
+volatile uint8_t   lokadresseA = 0;
+volatile uint8_t   lokadresseB = 0;
+
+volatile uint8_t   deflokadresse = 0;
+volatile uint8_t   lokstatus=0x00; // Funktion, Richtung
 
 volatile uint8_t   oldlokdata = 0;
 volatile uint8_t   lokdata = 0;
+volatile uint8_t   deflokdata = 0;
+//volatile uint16_t   newlokdata = 0;
 
+volatile uint8_t   rawdataA = 0;
+volatile uint8_t   rawdataB = 0;
+//volatile uint32_t   oldrawdata = 0;
+
+// ***
+volatile uint8_t   rawfunktionA = 0;
+volatile uint8_t   rawfunktionB = 0;
+
+
+// ***
 volatile uint8_t   speed = 0;
 
 volatile uint8_t   oldfunktion = 0;
 volatile uint8_t   funktion = 0;
-
+volatile uint8_t   deffunktion = 0;
 volatile uint8_t   waitcounter = 0;
-
+volatile uint8_t   richtungcounter = 0; // delay fuer Richtungsimpuls
 
 volatile uint8_t	Potwert=45;
 			//	Zaehler fuer richtige Impulsdauer
-uint8_t				LOimpulsdauerNullpunkt=23;
-uint8_t				LOimpulsdauerSchrittweite=10;
 //uint8_t				Servoposition[]={23,33,42,50,60};
 // Richtung invertiert
-volatile uint8_t				Servoposition[]={60,50,42,33,23};
+//volatile uint8_t				Servoposition[]={60,50,42,33,23};
 
 volatile uint16_t	taktimpuls=0;
 
@@ -122,7 +136,39 @@ uint8_t EEMEM WDT_ErrCount;	// Akkumulierte WDT Restart Events
 
 
 
+// linear
+//volatile uint8_t   speedlookup[15] = {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252};
 
+
+//volatile uint8_t   speedlookup[15] = {0,10,20,30,40,50,60,70,80,90,100,110,120,130,140};
+// linear 100
+//volatile uint8_t   speedlookup[15] = {0,7,14,21,28,35,42,50,57,64,71,78,85,92,100};
+
+// linear 80
+//volatile uint8_t   speedlookup[15] = {0,5,11,17,22,28,34,40,45,51,57,62,68,74,80};
+
+// linear mit offset 30
+//volatile uint8_t   speedlookup[15] = {0,33,37,40,44,47,51,55,58,62,65,69,72,76,80};
+
+// linear mit offset 22
+//volatile uint8_t   speedlookup[15] = {0,26,30,34,38,42,46,51,55,59,63,67,71,75,80};
+
+// linear mit offset 20
+volatile uint8_t   speedlookup[15] = {0,24,28,32,37,41,45,50,54,58,62,67,71,75,80};
+
+// logarithmisch 180
+//volatile uint8_t   speedlookup[14] = {0,46,73,92,106,119,129,138,146,153,159,165,170,175,180};
+
+//log 160
+//volatile uint8_t   speedlookup[14] = {0,40,64,81,95,105,114,122,129,136,141,146,151,155,160};
+
+// log 140
+//volatile uint8_t   speedlookup[14] = {0,35,56,71,83,92,100,107,113,119,123,128,132,136,140};
+
+// log 100
+//volatile uint8_t   speedlookup[14] = {0,25,40,51,59,66,71,76,81,85,88,91,94,97,100};
+
+uint8_t loopledtakt = 0x0A;
 
 
 
@@ -132,7 +178,19 @@ void slaveinit(void)
 	OSZIDDR |= (1<<OSZIA);	//Pin 7 von PORT D als Ausgang fuer SOSZI B
    OSZIPORT |= (1<<OSZIB);   //Pin 6 von PORT D als Ausgang fuer OSZI A
    OSZIDDR |= (1<<OSZIB);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
-	
+
+   OSZIPORT |= (1<<INT_0);   //
+   OSZIDDR |= (1<<INT_0);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
+
+   OSZIDDR |= (1<<PAKETA);
+   OSZIPORT |= (1<<PAKETA);   //PAKETA
+      //
+   OSZIDDR |= (1<<PAKETB); 
+   OSZIPORT |= (1<<PAKETB);   //PAKETB
+   
+
+   
+   
 	LOOPLEDPORT |=(1<<LOOPLED);
    LOOPLEDDDR |=(1<<LOOPLED);
 	
@@ -142,10 +200,14 @@ void slaveinit(void)
  	LCD_DDR |= (1<<LCD_ENABLE_PIN);	//Pin 6 von PORT B als Ausgang fuer LCD
 	LCD_DDR |= (1<<LCD_CLOCK_PIN);	//Pin 7 von PORT B als Ausgang fuer LCD
 
-   DDRB |= (1<<0); // Ausgang Oszi
-   DDRB |= (1<<1); // Ausgang 
-   PORTB |= (1<<1); // HI
-	
+   TESTDDR |= (1<<TEST0); // test0
+   TESTPORT |= (1<<TEST0); // HI
+   TESTDDR |= (1<<TEST1); // test1 
+   TESTPORT |= (1<<TEST1); // HI
+	TESTDDR |= (1<<TEST2); // test2
+   TESTPORT |= (1<<TEST2); // HI
+   
+   
    STATUSDDR |= (1<<ADDRESSOK); // Adresse ist OK
    STATUSPORT &= ~(1<<ADDRESSOK); // LO
    STATUSDDR |= (1<<DATAOK);  // Data ist OK
@@ -154,10 +216,17 @@ void slaveinit(void)
    STATUSDDR |= (1<<FUNKTIONOK);  // Data ist OK
    STATUSPORT &= ~(1<<FUNKTIONOK); // LO
 
+   STATUSDDR &= ~(1<<MEM);  // Eingang Mem-Status (last richtung)
+  
+
+   
    MOTORDDR |= (1<<MOTOROUT);  // Motor PWM
    MOTORPORT &= ~(1<<MOTOROUT); // LO
 
-   
+   MOTORDDR |= (1<<MOTORDIR);  // Motor Dir
+   MOTORPORT &= ~(1<<MOTORDIR); // LO
+
+  
 }
 
 
@@ -216,18 +285,22 @@ void timer2 (uint8_t wert)
 	
 	OCR2 = wert;					//Setzen des Compare Registers auf HIimpulsdauer
 } 
-
+#pragma mark INT0
 ISR(INT0_vect) 
 {
-   //OSZIATOG;
+   OSZIATOG;
    if (INT0status == 0) // neue Daten beginnen
    {
       INT0status |= (1<<INT0_START);
-      INT0status |= (1<<INT0_WAIT);
+      INT0status |= (1<<INT0_WAIT); // delay, um Wert des Eingangs zum richtigen Zeitpunkt zu messen
+      
+      INT0status |= (1<<INT0_PAKET_A); // erstes Paket lesen
+      OSZIPORT &= ~(1<<PAKETA); 
+      //TESTPORT &= ~(1<<TEST2);
       OSZIALO; 
       OSZIBLO;
       
-      PORTB &= ~(1<<1);
+      OSZIPORT &= ~(1<<INT_0);
       
       pausecounter = 0; // pausen detektieren, reset fuer jedes HI
       abstandcounter = 0;// zweites Paket detektieren, 
@@ -238,262 +311,346 @@ ISR(INT0_vect)
       lokdata = 0;
       funktion = 0;
       
-      HIimpulsdauer = 0;
+  //    rawdataA = 0;
+  //    rawdataB = 0;
+
       
-      HICounter = 0;
-      //  irq_falling_edge=0; // wait for next fall
+//      HIimpulsdauer = 0;
       
-      //    INT0status &= ~(1<<INT0_RISING);
-      //MCUCR = (1<<ISC00); // raise int0 on falling edge
-      //OSZIAHI;
+      // A85
+ 
+      
+      // A85
    } 
    
    else // Data im Gang, neuer Interrupt
    {
       INT0status |= (1<<INT0_WAIT);
-      PORTB &= ~(1<<1);
+      
+      OSZIPORT &= ~(1<<INT_0);
       pausecounter = 0;
       abstandcounter = 0; 
       waitcounter = 0;
       OSZIALO;
-      //    HIimpulsdauer = HICounter;
       //   INT0status |= (1<<INT0_RISING); // wait for next rise
       //    MCUCR = (1<<ISC00) |(1<<ISC01); // raise int0 on rising edge
    }
 }
 
-
+#pragma mark ISR Timer2
 
 ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
 {
-   
-   //MOTORPORT ^= (1<<MOTOROUT);
-   motorPWM++;
-   if (motorPWM > speed)
+   //OSZIATOG;
+   if (speed)
    {
-   //   MOTORPORT ^= (1<<MOTOROUT);
-      MOTORPORT &= ~(1<<MOTOROUT);
+      motorPWM++;
    }
-   if (motorPWM > 0xFF)
+   if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
-      motorPWM = 0;
-      MOTORPORT |= (1<<MOTOROUT);
-    }
+      MOTORPORT |= (1<<MOTOROUT); // OFF, Motor ist active LO
+      
+   }
    
+   if (motorPWM >= 254) //ON, neuer Motorimpuls
+   {
+      MOTORPORT &= ~(1<<MOTOROUT);
+      motorPWM = 0;
+   }
+   
+   
+#pragma mark TIMER0 INT0
    if (INT0status & (1<<INT0_WAIT))
    {
       waitcounter++;
       if (waitcounter > 2)
       {
          INT0status &= ~(1<<INT0_WAIT);
-         
-         PORTB |= (1<<1);
-         //uint8_t pos = tritposition & 0x01;
-         if (tritposition < 8) // Adresse)
+         if (INT0status & (1<<INT0_PAKET_A))
          {
-            if (INPIN & (1<<DATAPIN)) // Pin HI, 
+            if (tritposition < 8) // Adresse)
             {
-               lokadresse |= (1<<tritposition); // bit ist 1
+               if (INPIN & (1<<DATAPIN)) // Pin HI, 
+               {
+                  lokadresseA |= (1<<tritposition); // bit ist 1
+               }
+               else // 
+               {
+                  lokadresseA &= ~(1<<tritposition); // bit ist 0
+               }
             }
-            else // 
+            else if (tritposition < 10)
             {
-               lokadresse &= ~(1<<tritposition); // bit ist 0
+               if (INPIN & (1<<DATAPIN)) // Pin HI, 
+               {
+                  rawfunktionA |= (1<<tritposition-8); // bit ist 1
+               }
+               else // 
+               {
+                  rawfunktionA &= ~(1<<tritposition-8); // bit ist 0
+               }
+               
             }
-            //tritposition ++;
-         }
-         
-         else 
-         {
             
-            if (lokadresse == LOK_ADRESSE) // weitere Daten lesen ab tritposition 4
+            else
             {
-               lokstatus |= (1<<ADDRESSBIT);
-               
-               STATUSPORT |= (1<<ADDRESSOK); // LED ON
-               
-               if (tritposition < 10)
+               if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
-                  if (INPIN & (1<<DATAPIN)) // Pin HI, 
-                  {
-                     funktion |= (1<<(tritposition - 8)); // bit ist 1
-                  }
-                  else // 
-                  {
-                     funktion &= ~(1<<(tritposition - 8)); // bit ist 0
-                  }
-
+                  rawdataA |= (1<<(tritposition-10)); // bit ist 1
                }
-               else
+               else // 
                {
-                  if (INPIN & (1<<DATAPIN)) // Pin HI, 
-                  {
-                     lokdata |= (1<<(tritposition - 10)); // bit ist 1
-                  }
-                  else // 
-                  {
-                     lokdata &= ~(1<<(tritposition - 10)); // bit ist 0
-                  }
+                  rawdataA &= ~(1<<(tritposition-10)); // bit ist 0
                }
-            }
-            else // Lokadresse falsch, Daten verwerfen
-            {
-               lokstatus &= ~(1<<ADDRESSBIT); // Adresse falsch
-                
-               STATUSPORT &= ~(1<<ADDRESSOK); // LED OFF
-          //     INT0status == 0;
-          //     return;
             }
          }
          
-         if (tritposition < 18)
+         if (INT0status & (1<<INT0_PAKET_B))
+         {
+            if (tritposition < 8) // Adresse)
+            {
+               
+               if (INPIN & (1<<DATAPIN)) // Pin HI, 
+               {
+                  lokadresseB |= (1<<tritposition); // bit ist 1
+               }
+               else // 
+               {
+                  lokadresseB &= ~(1<<tritposition); // bit ist 0
+               }
+            }
+            else if (tritposition < 10) // bit 8,9: funktion
+            {
+               if (INPIN & (1<<DATAPIN)) // Pin HI, 
+               {
+                  rawfunktionB |= (1<<tritposition-8); // bit ist 1
+               }
+               else // 
+               {
+                  rawfunktionB &= ~(1<<tritposition-8); // bit ist 0
+               }
+               
+            }
+            
+            
+            else
+            {
+               if (INPIN & (1<<DATAPIN)) // Pin HI, 
+               {
+                  rawdataB |= (1<<tritposition-10); // bit ist 1
+               }
+               else 
+               {
+                  rawdataB &= ~(1<<tritposition-10); // bit ist 0
+               }
+            }
+            
+            if (!(lokadresseB == LOK_ADRESSE))
+            {
+               
+            }
+         }
+         
+         // Paket anzeigen
+         if (INT0status & (1<<INT0_PAKET_B))
+         {
+            //           TESTPORT |= (1<<TEST2);
+         }
+         if (INT0status & (1<<INT0_PAKET_A))
+         {
+            //           TESTPORT |= (1<<TEST1);
+         }
+         
+         
+         if (tritposition < 17)
          {
             tritposition ++;
          }
-         else
+         else // Paket gelesen
          {
-            if (funktion == oldfunktion) // funktion gleich wie vorher
+            // Paket A?
+            if (INT0status & (1<<INT0_PAKET_A)) // erstes Paket, Werte speichern
             {
-               STATUSPORT |= (1<<FUNKTIONOK);
-               lokstatus ^= (1<<FUNKTIONBIT); // funktion zweimal OK
-            }
-            else
-            {
-               STATUSPORT &= ~(1<<FUNKTIONOK); // Funktion ungleich, warten bis ident
-               //oldfunktion = funktion;
-            }
-           
-            if (lokdata == oldlokdata)
-            {
-               STATUSPORT |= (1<<DATAOK);
-               lokstatus |= (1<<DATABIT); // data zweimal OK
+               oldfunktion = funktion;
                
-               if (lokdata == 0x03) // Richtung toggle
-               {
-                  lokstatus ^= (1<<RICHTUNGBIT);
-                  MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
-               }
-               else if (lokdata == 0)
-               {
-                  speed = 0;
-               }
-               else //if (lokdata > 3)
-               {
-                  switch (lokdata)
-                  {
-                  case 0x0C:
-                     speed = 1;
-                     break;
-                  case 0x0F:
-                     speed = 2;
-                     break;
-                  case 0x30:
-                     speed = 3;
-                     break;
-                  case 0x33:
-                     speed = 4;
-                     break;
-                  case 0x3C:
-                     speed = 5;
-                     break;
-                  case 0x3F:
-                     speed = 6;
-                     break;
-                  case 0xC0:
-                     speed = 7;
-                     break;
-                  case 0xC3:
-                     speed = 8;
-                     break;
-                  case 0xCC:
-                     speed = 9;
-                     break;
-                  case 0xCF:
-                     speed = 10;
-                     break;
-                  case 0xF0:
-                     speed = 11;
-                     break;
-                  case 0xF3:
-                     speed = 12;
-                     break;
-                  case 0xFC:
-                     speed = 13;
-                     break;
-                  case 0xFF:
-                     speed = 14;
-                     break;
-                     
-                  }
-                  speed *= 18;
-                                    
-               }
+               INT0status &= ~(1<<INT0_PAKET_A); // Bit fuer erstes Paket weg
+               INT0status |= (1<<INT0_PAKET_B); // Bit fuer zweites Paket setzen
+               tritposition = 0;
             }
-            else
+            else if (INT0status & (1<<INT0_PAKET_B)) // zweites Paket, Werte testen
             {
-               STATUSPORT &= ~(1<<DATAOK);
-               lokstatus &= ~(1<<DATABIT); // data falsch
-               oldlokdata = lokdata;
-            }
-            
-            //tritposition = 0;
-            //INT0status == 0;
+               
+               
+#pragma mark EQUAL
+               if (lokadresseA && ((rawfunktionA == rawfunktionB) && (rawdataA == rawdataB) && (lokadresseA == lokadresseB))) // Lokadresse > 0 und Lokadresse und Data OK
+               {
+                  if (lokadresseB == LOK_ADRESSE)
+                  {
+                     // Daten uebernehmen
+                     //   STATUSPORT |= (1<<DATAOK); // LED ON
+                     //  STATUSPORT |= (1<<ADDRESSOK); // LED ON
+                     
+                     lokstatus |= (1<<ADDRESSBIT);
+                     deflokadresse = lokadresseB;
+                     //deffunktion = (rawdataB & 0x03); // bit 0,1 funktion als eigene var
+                     deffunktion = rawfunktionB;
+                     uint8_t speedcode = 0;
+                     
+                     if (deffunktion)
+                     {
+                        lokstatus |= (1<<FUNKTIONBIT);
+                        STATUSPORT |= (1<<LAMPE);
+                     }
+                     else
+                     {
+                        lokstatus &= ~(1<<FUNKTIONBIT);
+                        STATUSPORT &= ~(1<<LAMPE);
+                     }
+                     for (uint8_t i=0;i<8;i++)
+                     {
+                        //if ((rawdataB & (1<<(2+i))))
+                        if ((rawdataB & (1<<i)))
+                        {
+                           deflokdata |= (1<<i);
+                        }
+                        else 
+                        {
+                           deflokdata &= ~(1<<i);
+                        }
+                     }
+                     
+                     // Richtung
+                     if (deflokdata == 0x03) // Wert 1, Richtung togglen
+                     {
+                        if (!(lokstatus & (1<<RICHTUNGBIT)))
+                        {
+                           lokstatus |= (1<<RICHTUNGBIT);
+                           richtungcounter = 0xFF;
+                           speed = 0;
+                           MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
+                           
+                        }
+                     }
+                     else 
+                     {  
+                        lokstatus &= ~(1<<RICHTUNGBIT); 
+#pragma mark speed                           
+                        switch (deflokdata)
+                        {
+                           case 0:
+                              speedcode = 0;
+                              break;
+                           case 0x0C:
+                              speedcode = 1;
+                              break;
+                           case 0x0F:
+                              speedcode = 2;
+                              break;
+                           case 0x30:
+                              speedcode = 3;
+                              break;
+                           case 0x33:
+                              speedcode = 4;
+                              break;
+                           case 0x3C:
+                              speedcode = 5;
+                              break;
+                           case 0x3F:
+                              speedcode = 6;
+                              break;
+                           case 0xC0:
+                              speedcode = 7;
+                              break;
+                           case 0xC3:
+                              speedcode = 8;
+                              break;
+                           case 0xCC:
+                              speedcode = 9;
+                              break;
+                           case 0xCF:
+                              speedcode = 10;
+                              break;
+                           case 0xF0:
+                              speedcode = 11;
+                              break;
+                           case 0xF3:
+                              speedcode = 12;
+                              break;
+                           case 0xFC:
+                              speedcode = 13;
+                              break;
+                           case 0xFF:
+                              speedcode = 14;
+                              break;
+                           default:
+                              speedcode = 0;
+                              break;
+                              
+                        }
+                        speed = speedlookup[speedcode];
+                     }
+                  }
+                  else 
+                  {
+                     // aussteigen
+                     //deflokdata = 0x17;
+                     INT0status = 0;
+                     return;
+                  }
+               }
+               else 
+               {
+                  lokstatus &= ~(1<<ADDRESSBIT);
+                  // aussteigen
+                  //deflokdata = 0x13;
+                  INT0status = 0;
+                  return;
+                  
+               }
+               
+               INT0status |= (1<<INT0_END);
+               //     OSZIPORT |= (1<<PAKETB);
+               if (INT0status & (1<<INT0_PAKET_B))
+               {
+                  //               TESTPORT |= (1<<TEST2);
+               }
+            } // End Paket B
          }
          
-      }
-   }
-   //PORTB ^= (1<<0);
+      } // waitcounter > 2
+   } // if INT0_WAIT
    
-   //PORTB |= (1<<1);
    if (INPIN & (1<<DATAPIN)) // Pin HI, input   im Gang
    {
-      HIimpulsdauer++; // zaehlen
+      //      HIimpulsdauer++; // zaehlen
    }
    else  // LO, input fertig, Bilanz
    {
       if (abstandcounter < 20)
       {
          abstandcounter++;
-       }
-      else //if (abstandcounter )
+      }
+      else //if (abstandcounter ) // Paket 2
       {
          abstandcounter = 0;
-         OSZIAHI;
+         //   OSZIAHI;
+         //     OSZIPORT |= (1<<PAKETA); 
+         //    OSZIPORT &= ~(1<<PAKETB);   
       }
       
-      if (pausecounter < 140)
+      if (pausecounter < 120)
       {
          pausecounter ++; // pausencounter incrementieren
-         
       }
       else 
       {
-        OSZIBHI; //pause detektiert
+         //OSZIBHI; //pause detektiert
          pausecounter = 0;
          INT0status = 0; //Neue Daten abwarten
          return;
       }
-      if (HIimpulsdauer < 4) // kurz
-      {
-         //PORTB |= (1<<1);
-         //OSZIAHI;
-         HIimpulsdauer =0;
-      }
-      else if (HIimpulsdauer > 8) // lang
-      {
-         //OSZIBHI;
-         HIimpulsdauer = 0;
-          HIimpulsdauer = 0;
-      }
       
    } // input LO
-//		lcd_clr_line(1);
-//		lcd_puts("Timer2 Comp\0");
-//		TCCR2=0;
-//		SERVOPORT &= ~(1<<SERVOPIN0);//	SERVOPIN0 zuruecksetzen
-//		SERVOPORT &= ~(1<<5);// Kontrolle auf PIN D5 OFF
-		//delay_ms(800);
-		//lcd_clr_line(1);
-		
 }
 
 
@@ -501,13 +658,11 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
 
 void main (void) 
 {
+   
+   
 	slaveinit();
    
    int0_init();
-	//PORT2 |=(1<<PC4);
-	//PORTC |=(1<<PC5);
-	//uint16_t ADC_Wert= readKanal(0);
-	//sei();
 	
 	/* initialize the LCD */
 	lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
@@ -515,16 +670,8 @@ void main (void)
 	lcd_puts("Guten Tag\0");
 	_delay_ms(1000);
 	lcd_cls();
-	lcd_puts("H0-Interface\0");
+	lcd_puts("H0-Decoder A8");
 	
-
-	uint8_t Tastenwert=0;
-	uint8_t TastaturCount=0;
-		
-	uint16_t TastenStatus=0;
-	uint16_t Tastencount=0;
-	uint16_t Tastenprellen=0x01F;
-	uint8_t Schalterposition=0;
    
 	//timer0();
    
@@ -532,53 +679,17 @@ void main (void)
 	
 	//initADC(TASTATURPIN);
 	
-	//wdt_enable(WDTO_2S);
 	
-	uint16_t loopcount0=0;
-	
+	//uint16_t loopcount0=0;
+   uint8_t loopcount0=0;
+   uint8_t loopcount1=0;
 
-
-	uint8_t twierrcount=0;
-	
 	
 	_delay_ms(800);
-	//uint8_t tempWDT_Count=eeprom_read_byte(&WDT_ErrCount);
 
-
-	//	Zaehler fuer Wartezeit nach dem Start
-	uint16_t startdelay0=0x00AF;
-	//uint16_t startdelay1=0;
-
-	//Zaehler fuer Zeit von (SDA || SCL = LO)
-	uint16_t twi_LO_count0=0;
-	uint16_t twi_LO_count1=0;
-	uint8_t SlaveStatus=0x00; //status
-
-	//Zaehler fuer Zeit von (SDA && SCL = HI)
-	uint16_t twi_HI_count0=0;
-
-	//uint8_t eepromWDT_Count0=eeprom_read_byte(&WDT_ErrCount0); 
-	//uint8_t eepromWDT_Count1=eeprom_read_byte(&WDT_ErrCount1);
-	/*
-	eepromWDT_Count0: Zaehler der wdt-Resets mit restart. 
-	
-	eepromWDT_Count1: Zaehler fuer neuen wdt-Reset. Wenn wdt anspricht, wird der Zaheler erhoeht.
-	Beim Restart wird bei anhaltendem LO auf SDA oder SCL gewartet.
-	Wenn SCL und SDA beide HI sind, wird der Zaehler auf den Wert von eepromWDT_Count0 gesetzt 
-	und der TWI-Slave gestartet.
-	
-	*/
-/*
-	// Ankuendigen, dass schon ein wdt erfolgte
-	if (!(eepromWDT_Count0==eepromWDT_Count1))
-	{
-		lcd_gotoxy(18,1);
-		lcd_puts("W\0");
-
-	}
- */
+   
    oldfunktion = 0x03; // 0x02
-   oldlokdata = 0xCC;
+   oldlokdata = 0xCE;
 
    sei();
 
@@ -586,11 +697,13 @@ void main (void)
    lcd_puts("ADR ");
    lcd_puthex(LOK_ADRESSE);
    
-   lcd_gotoxy(0,2);
-   lcd_puts("adr ");
+   //lcd_gotoxy(0,2);
+   lcd_puts(" adrIN");
 
-   lcd_gotoxy(0,3);
-   lcd_puts("data ");
+   //lcd_gotoxy(0,2);
+   
+   //lcd_gotoxy(0,3);
+   //lcd_puts("data ");
 
 
 
@@ -599,57 +712,121 @@ void main (void)
 		wdt_reset();
 				//Blinkanzeige
 		loopcount0++;
-		if (loopcount0==0x8FFF)
+		if (loopcount0 >= loopledtakt)
 		{
 			loopcount0=0;
-			LOOPLEDPORT ^=(1<<LOOPLED);
          
-         lcd_gotoxy(4,2);
- 			lcd_puthex(lokadresse);
-         
-			//delay_ms(10);
-         /*
-         if (lokadresse == LOK_ADRESSE)
+         loopcount1++;
+         //if (loopcount1 >= loopledtakt)
          {
-            cli();
-            lcd_gotoxy(8,2);
-            lcd_puts("adr OK ");
-            lcd_puthex(lokadresse);
-            sei();
-         }
-       else 
-       {
-          cli();
-          lcd_gotoxy(8,2);
-          lcd_puts("adr Err ");
-          lcd_puthex(lokadresse);
-          sei();
-       }
-          */
+            loopcount1 = 0;
+            LOOPLEDPORT ^=(1<<LOOPLED);
+         }   
+            lcd_gotoxy(13,1);
+            lcd_puthex(deflokadresse);
+            
+            //delay_ms(10);
+            
+            if (deflokadresse == LOK_ADRESSE)
+            {
+               
+               lcd_gotoxy(17,1);
+               lcd_puts("OK ");
+               //lcd_puthex(deflokadresse);
+               
+            }
+            else 
+            {
+               lcd_gotoxy(17,1);
+               lcd_puts("Err");
+               //lcd_puthex(lokadresse);
+               
+            }
+            
+#pragma mark LCD
+            //uint8_t a = ((deflokdata >>4)& 0xFF);
+            /*
+             lcd_gotoxy(0,2);
+             lcd_puthex(a);
+             lcd_putc(' ');
+             a = ((deflokdata >>8)& 0xFF);
+             lcd_puthex(a);
+             lcd_putc(' ');
+             a = ((deflokdata >>12)& 0xFF);
+             lcd_puthex(a);
+             lcd_putc(' ');
+             lcd_puthex(newlokdata);
+             lcd_putc(' ');
+             
+             lcd_putc('*');
+             lcd_puthex(oldlokdata);
+             lcd_putc(' ');
+             
+             //lcd_puthex(rawdataA>>4);
+             */
+            
+            lcd_gotoxy(0,2);
+            // uint32_t b = 0xFFFFFFFF;
+            /*
+             for (uint8_t i=0;i<18;i++)
+             {
+             if (deflokdata & (1<<i))
+             {
+             lcd_putc('1');
+             }
+             else
+             {
+             lcd_putc('0');
+             }
+             
+             }
+             */
+            
+            lcd_gotoxy(0,3);
+            lcd_puthex(deflokdata);
+            lcd_putc(' ');
+            
+          //  if (lokstatus & (1<<FUNKTIONBIT))
+            if ( STATUSPIN & (1<<LAMPE))
+            {
+               lcd_putc('1');
+            }
+            else
+            {
+               lcd_putc('0');
+            }
+            lcd_putc(' ');
+            lcd_putint(speed);
+            lcd_putc(' ');
+            //if (lokstatus &(1<<RICHTUNGBIT))
+            if (MOTORPIN & (1<<MOTORDIR))
+            {
+               lcd_putc('V');
+            }
+            else
+            {
+               lcd_putc('R');
+            }
+           // lcd_gotoxy(0,0);
+            /*
+             // uint32_t b = 0xFFFFFFFF;
+             for (uint8_t i=0;i<18;i++)
+             {
+             if (rawdataB & (1<<i))
+             {
+             lcd_putc('1');
+             }
+             
+             else
+             {
+             lcd_putc('0');
+             }
+             
+             }
+             */
          
-         lcd_gotoxy(4,3);
-         lcd_puthex(lokdata);
-         lcd_putc(' ');
-         lcd_putint(speed);
-         
-         
-         uint16_t tempBuffer=0;
-//			initADC(VORLAUF);
-//			tempBuffer=readKanal(VORLAUF);
-//			lcd_gotoxy(0,1);
-//			lcd_puts("V\0");
-			//lcd_putint(tempBuffer>>2);
-//			lcd_put_tempbis99(tempBuffer>>2);
 			
-		}
-
-		
-			
-		
-		
-	
-			
-		
+		} // loopcount0 >= loopledtakt
 		
 	}//while
 
