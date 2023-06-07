@@ -77,7 +77,7 @@ volatile uint8_t   data=0x00;
 
 
 
-
+volatile uint16_t MEMBuffer = 0;
 
 //volatile uint16_t	HIimpulsdauer=0;			//	Dauer des LOimpulsdaueres Definitiv
 
@@ -210,8 +210,8 @@ void slaveinit(void)
    
    STATUSDDR |= (1<<ADDRESSOK); // Adresse ist OK
    STATUSPORT &= ~(1<<ADDRESSOK); // LO
-   STATUSDDR |= (1<<DATAOK);  // Data ist OK
-	STATUSPORT &= ~(1<<DATAOK); // LO
+   //STATUSDDR |= (1<<DATAOK);  // Data ist OK
+	//STATUSPORT &= ~(1<<DATAOK); // LO
 
    STATUSDDR |= (1<<FUNKTIONOK);  // Data ist OK
    STATUSPORT &= ~(1<<FUNKTIONOK); // LO
@@ -225,6 +225,12 @@ void slaveinit(void)
 
    MOTORDDR |= (1<<MOTORDIR);  // Motor Dir
    MOTORPORT &= ~(1<<MOTORDIR); // LO
+
+   STATUSDDR |= (1<<LAMPE);  // Data ist OK
+   STATUSPORT &= ~(1<<LAMPE); // LO
+
+   initADC(MEM);
+   
 
   
 }
@@ -243,30 +249,6 @@ void int0_init(void)
 }
 
 
-/*
-void timer0 (void) 
-{ 
-// Timer fuer Exp
-TCCR0 |= (1<<CS00)|(1<<CS02);	//Takt /1024
-//	TCCR0 |= (1<<CS02);				//8-Bit Timer, Timer clock = system clock/256
-	
-//   TCCR0 |= (1<<CS00); // no prescaler
-//Timer fuer 	
-   
-//	TCCR0 |= (1<<CS00)|(1<<CS01);	//Takt /64 Intervall 64 us
-	
-	TIFR |= (1<<TOV0); 				//Clear TOV0 Timer/Counter Overflow Flag. clear pending interrupts
-	TIMSK |= (1<<TOIE0);			//Overflow Interrupt aktivieren
-	TCNT0 = 0x00;					//RŸcksetzen des Timers
-  
-}
-*/
-/*
-ISR(TIMER0_COMP_vect) 
-{
-   
-}
-*/
 void timer2 (uint8_t wert) 
 { 
 //	TCCR2 |= (1<<CS02);				//8-Bit Timer, Timer clock = system clock/256
@@ -274,19 +256,18 @@ void timer2 (uint8_t wert)
 //Takt fuer Servo
 //	TCCR2 |= (1<<CS20)|(1<<CS21);	//Takt /64	Intervall 64 us
 
-	TCCR2B |= (1<<WGM21);		//	ClearTimerOnCompareMatch CTC
+	TCCR2A |= (1<<WGM21);		//	ClearTimerOnCompareMatch CTC
    TCCR2B |= (1<<CS00); // no prescaler
 	//OC2 akt
-//	TCCR2 |= (1<<COM20);		//	OC2 Pin zuruecksetzen bei CTC
 
 
-	//TIFR |= (1<<TOV2); 				//Clear TOV2 Timer/Counter Overflow Flag. clear pending interrupts
 	TIMSK2 |= (1<<OCIE2A);			//CTC Interrupt aktivieren
    TIMSK2 |=(1<<TOIE2);        //interrupt on Compare Match A
 	TCNT2 = 0x00;					//Zaehler zuruecksetzen
 	
 	OCR2A = wert;					//Setzen des Compare Registers auf HIimpulsdauer
 } 
+
 #pragma mark INT0
 ISR(INT0_vect) 
 {
@@ -300,7 +281,7 @@ ISR(INT0_vect)
       OSZIPORT &= ~(1<<PAKETA); 
       //TESTPORT &= ~(1<<TEST2);
       OSZIALO; 
-      OSZIBLO;
+      
       
       OSZIPORT &= ~(1<<INT_0);
       
@@ -329,6 +310,7 @@ ISR(INT0_vect)
    {
       INT0status |= (1<<INT0_WAIT);
       
+      
       OSZIPORT &= ~(1<<INT_0);
       pausecounter = 0;
       abstandcounter = 0; 
@@ -341,8 +323,9 @@ ISR(INT0_vect)
 
 #pragma mark ISR Timer2
 
-ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
+ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
 {
+   //return;
    //OSZIATOG;
    if (speed)
    {
@@ -591,6 +574,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                         }
                         speed = speedlookup[speedcode];
                      }
+                     MEMBuffer=(readKanal(MEM));
                   }
                   else 
                   {
@@ -672,7 +656,7 @@ void main (void)
 	lcd_puts("Guten Tag\0");
 	_delay_ms(1000);
 	lcd_cls();
-	lcd_puts("H0-Decoder A8");
+	lcd_puts("H0-Decoder A328");
 	
    
 	//timer0();
@@ -809,6 +793,9 @@ void main (void)
             {
                lcd_putc('R');
             }
+         
+            lcd_putc(' ');
+            lcd_putint12(MEMBuffer);
            // lcd_gotoxy(0,0);
             /*
              // uint32_t b = 0xFFFFFFFF;

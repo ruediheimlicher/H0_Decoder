@@ -87,6 +87,9 @@
 
 
 #define LAMPE         2
-#define MEM         3 // Eingang fuer last richtung (Kondensator)
+#define MEM         4 // Eingang fuer last richtung (Kondensator)
+
+
+
 
 #endif /* defines_h */

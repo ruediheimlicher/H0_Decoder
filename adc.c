@@ -56,7 +56,7 @@ void initADC(uint8_t derKanal)
   ADMUX = derKanal;                      // Ÿbergebenen Kanal waehlen
 
   //ADMUX |= (1<<REFS1) | (1<<REFS0); // interne Referenzspannung nutzen 
-  //ADMUX |= (1<<REFS0); // VCC als Referenzspannung nutzen 
+  ADMUX |= (1<<REFS0); // VCC als Referenzspannung nutzen 
  
   /* nach Aktivieren des ADC wird ein "Dummy-Readout" empfohlen, man liest
      also einen Wert und verwirft diesen, um den ADC "warmlaufen zu lassen" */
@@ -72,7 +72,7 @@ uint16_t readKanal(uint8_t derKanal) //Unsere Funktion zum ADC-Channel aus lesen
   uint16_t result = 0;         //Initialisieren wichtig, da lokale Variablen
                                //nicht automatisch initialisiert werden und
                                //zufŠllige Werte haben. Sonst kann Quatsch rauskommen
- ADMUX = derKanal; 
+ ADMUX |= derKanal; 
   // Eigentliche Messung - Mittelwert aus 4 aufeinanderfolgenden Wandlungen
   for(i=0;i<4;i++)
   {
