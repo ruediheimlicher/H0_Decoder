@@ -175,12 +175,15 @@ uint16_t adctemperatur = 0;
 
 void slaveinit(void)
 {
- 	OSZIPORT |= (1<<OSZIA);	//Pin 6 von PORT D als Ausgang fuer OSZI A
-	OSZIDDR |= (1<<OSZIA);	//Pin 7 von PORT D als Ausgang fuer SOSZI B
+   
+    OSZIPORT |= (1<<OSZIA);   //Pin 6 von PORT D als Ausgang fuer OSZI A
+   OSZIDDR |= (1<<OSZIA);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
    OSZIPORT |= (1<<OSZIB);   //Pin 6 von PORT D als Ausgang fuer OSZI A
    OSZIDDR |= (1<<OSZIB);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
 
- 
+   //OSZIPORT |= (1<<INT_0);   //
+   //OSZIDDR |= (1<<INT_0);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
+
    OSZIDDR |= (1<<PAKETA);
    OSZIPORT |= (1<<PAKETA);   //PAKETA
       //
@@ -190,51 +193,51 @@ void slaveinit(void)
 
    
    
-	LOOPLEDPORT |=(1<<LOOPLED);
+   LOOPLEDPORT |=(1<<LOOPLED);
    LOOPLEDDDR |=(1<<LOOPLED);
-	
+   
 
-	//LCD
-	LCD_DDR |= (1<<LCD_RSDS_PIN);	//Pin 5 von PORT B als Ausgang fuer LCD
- 	LCD_DDR |= (1<<LCD_ENABLE_PIN);	//Pin 6 von PORT B als Ausgang fuer LCD
-	LCD_DDR |= (1<<LCD_CLOCK_PIN);	//Pin 7 von PORT B als Ausgang fuer LCD
+   //LCD
+   LCD_DDR |= (1<<LCD_RSDS_PIN);   //Pin 5 von PORT B als Ausgang fuer LCD
+    LCD_DDR |= (1<<LCD_ENABLE_PIN);   //Pin 6 von PORT B als Ausgang fuer LCD
+   LCD_DDR |= (1<<LCD_CLOCK_PIN);   //Pin 7 von PORT B als Ausgang fuer LCD
 
+   
    TESTDDR |= (1<<TEST0); // test0
    TESTPORT |= (1<<TEST0); // HI
-   TESTDDR |= (1<<TEST1); // test1 
-   TESTPORT |= (1<<TEST1); // HI
-	TESTDDR |= (1<<TEST2); // test2
-   TESTPORT |= (1<<TEST2); // HI
    
    
    STATUSDDR |= (1<<ADDRESSOK); // Adresse ist OK
    STATUSPORT &= ~(1<<ADDRESSOK); // LO
-   STATUSDDR |= (1<<DATAOK);  // Data ist OK
-	STATUSPORT &= ~(1<<DATAOK); // LO
+   //STATUSDDR |= (1<<DATAOK);  // Data ist OK
+   //STATUSPORT &= ~(1<<DATAOK); // LO
 
    STATUSDDR |= (1<<FUNKTIONOK);  // Data ist OK
    STATUSPORT &= ~(1<<FUNKTIONOK); // LO
 
-   STATUSDDR &= ~(1<<ADC_PIN); // Input Temperatur
-   STATUSPORT |= (1<<ADC_PIN);  // Pullup aktiviert
-   
-   
-   
-   STATUSDDR |= (1<<ADC_GND_PIN); // Kathode auf Masse
-   STATUSPORT &= ~(1<<ADC_GND_PIN);
-   
-   
    STATUSDDR &= ~(1<<MEM);  // Eingang Mem-Status (last richtung)
   
 
    
-   MOTORDDR |= (1<<MOTOROUT);  // Motor PWM
-   MOTORPORT &= ~(1<<MOTOROUT); // LO
+   MOTORDDR |= (1<<MOTORA);  // Motor A
+   MOTORPORT &= ~(1<<MOTORA); // LO
 
+   MOTORDDR |= (1<<MOTORB);  // Motor B
+   MOTORPORT &= ~(1<<MOTORB); // LO
+
+   
    MOTORDDR |= (1<<MOTORDIR);  // Motor Dir
    MOTORPORT &= ~(1<<MOTORDIR); // LO
 
+   //STATUSDDR |= (1<<LAMPE);  // Data ist OK
+   //STATUSPORT &= ~(1<<LAMPE); // LO
+
+   LAMPEDDR |= (1<<LAMPE);  // Data ist OK
+   LAMPEPORT &= ~(1<<LAMPE); // LO
+
+   initADC(MEM);
    
+
   
 }
 
@@ -356,13 +359,13 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
    }
    if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
-      MOTORPORT |= (1<<MOTOROUT); // OFF, Motor ist active LO
+      MOTORPORT |= (1<<MOTORA); // OFF, Motor ist active LO
       
    }
    
    if (motorPWM >= 254) //ON, neuer Motorimpuls
    {
-      MOTORPORT &= ~(1<<MOTOROUT);
+      MOTORPORT &= ~(1<<MOTORA);
       motorPWM = 0;
    }
    
@@ -535,7 +538,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                            lokstatus |= (1<<RICHTUNGBIT);
                            richtungcounter = 0xFF;
                            speed = 0;
-                           MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
+                           MOTORPORT ^= (1<<MOTORB); // Richtung umpolen
                            
                         }
                      }
@@ -678,7 +681,7 @@ void main (void)
 	lcd_puts("Guten Tag\0");
 	_delay_ms(1000);
 	lcd_cls();
-	lcd_puts("H0-Decoder A8");
+	lcd_puts("H0-Decoder A8_2");
 	
    
 	//timer0();
@@ -829,7 +832,7 @@ void main (void)
             lcd_putint(speed);
             lcd_putc(' ');
             //if (lokstatus &(1<<RICHTUNGBIT))
-            if (MOTORPIN & (1<<MOTORDIR))
+            if (MOTORPIN & (1<<MOTORB))
             {
                lcd_putc('V');
             }
