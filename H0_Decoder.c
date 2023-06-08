@@ -168,9 +168,10 @@ volatile uint8_t   speedlookup[15] = {0,24,28,32,37,41,45,50,54,58,62,67,71,75,8
 // log 100
 //volatile uint8_t   speedlookup[14] = {0,25,40,51,59,66,71,76,81,85,88,91,94,97,100};
 
-uint8_t loopledtakt = 0x0A;
+uint8_t loopledtakt = 0x40;
 
 
+uint16_t adctemperatur = 0;
 
 void slaveinit(void)
 {
@@ -179,9 +180,7 @@ void slaveinit(void)
    OSZIPORT |= (1<<OSZIB);   //Pin 6 von PORT D als Ausgang fuer OSZI A
    OSZIDDR |= (1<<OSZIB);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
 
-   OSZIPORT |= (1<<INT_0);   //
-   OSZIDDR |= (1<<INT_0);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
-
+ 
    OSZIDDR |= (1<<PAKETA);
    OSZIPORT |= (1<<PAKETA);   //PAKETA
       //
@@ -216,6 +215,15 @@ void slaveinit(void)
    STATUSDDR |= (1<<FUNKTIONOK);  // Data ist OK
    STATUSPORT &= ~(1<<FUNKTIONOK); // LO
 
+   STATUSDDR &= ~(1<<ADC_PIN); // Input Temperatur
+   STATUSPORT |= (1<<ADC_PIN);  // Pullup aktiviert
+   
+   
+   
+   STATUSDDR |= (1<<ADC_GND_PIN); // Kathode auf Masse
+   STATUSPORT &= ~(1<<ADC_GND_PIN);
+   
+   
    STATUSDDR &= ~(1<<MEM);  // Eingang Mem-Status (last richtung)
   
 
@@ -226,6 +234,7 @@ void slaveinit(void)
    MOTORDDR |= (1<<MOTORDIR);  // Motor Dir
    MOTORPORT &= ~(1<<MOTORDIR); // LO
 
+   
   
 }
 
@@ -285,6 +294,7 @@ void timer2 (uint8_t wert)
 	
 	OCR2 = wert;					//Setzen des Compare Registers auf HIimpulsdauer
 } 
+
 #pragma mark INT0
 ISR(INT0_vect) 
 {
@@ -298,9 +308,8 @@ ISR(INT0_vect)
       OSZIPORT &= ~(1<<PAKETA); 
       //TESTPORT &= ~(1<<TEST2);
       OSZIALO; 
-      OSZIBLO;
+      //OSZIBLO;
       
-      OSZIPORT &= ~(1<<INT_0);
       
       pausecounter = 0; // pausen detektieren, reset fuer jedes HI
       abstandcounter = 0;// zweites Paket detektieren, 
@@ -327,7 +336,6 @@ ISR(INT0_vect)
    {
       INT0status |= (1<<INT0_WAIT);
       
-      OSZIPORT &= ~(1<<INT_0);
       pausecounter = 0;
       abstandcounter = 0; 
       waitcounter = 0;
@@ -662,7 +670,7 @@ void main (void)
    
 	slaveinit();
    
-   int0_init();
+//   int0_init();
 	
 	/* initialize the LCD */
 	lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
@@ -670,12 +678,12 @@ void main (void)
 	lcd_puts("Guten Tag\0");
 	_delay_ms(1000);
 	lcd_cls();
-	lcd_puts("H0-Interface\0");
+	lcd_puts("H0-Decoder A8");
 	
    
 	//timer0();
    
-   timer2(4);
+ //  timer2(4);
 	
 	//initADC(TASTATURPIN);
 	
@@ -704,8 +712,10 @@ void main (void)
    
    //lcd_gotoxy(0,3);
    //lcd_puts("data ");
-
-
+   
+   initADC(0);
+   
+  
 
 	while (1)
 	{	
@@ -717,10 +727,30 @@ void main (void)
 			loopcount0=0;
          
          loopcount1++;
-         //if (loopcount1 >= loopledtakt)
+         if (loopcount1 >= loopledtakt)
          {
             loopcount1 = 0;
             LOOPLEDPORT ^=(1<<LOOPLED);
+           adctemperatur = readKanal(ADC_PIN);
+            //temperatur = 8;
+            lcd_gotoxy(0,2);
+            lcd_putint12(adctemperatur);
+            if (adctemperatur < MIN_ADCTEMPERATUR )
+            {
+               adctemperatur = MIN_ADCTEMPERATUR;
+            }
+            uint8_t temperatur = 0;
+            for (uint8_t index = 0;index < KENNLINIE_SIZE; index++)
+            {
+               if (adctemperatur > kennlinie[index] )
+               {
+                  temperatur = index + 15;
+                  break;
+               }
+            }
+            lcd_gotoxy(8,2);
+            lcd_putint2(temperatur);
+ 
          }   
             lcd_gotoxy(13,1);
             lcd_puthex(deflokadresse);

@@ -45,6 +45,7 @@
 #define STATUSPIN    PINC
 
 // Pins
+#define TEMPERATURPIN  0 // Diode gegen masse
 #define FUNKTIONOK   2
 #define ADDRESSOK    3
 #define DATAOK       4
@@ -85,8 +86,24 @@
 #define INT0_PAKET_A 4
 #define INT0_PAKET_B 5
 
+#define LAMPEPORT PORTD
+#define LAMPEDDR  DDRD
+#define LAMPEPIN   PIND
+
+
 
 #define LAMPE         2
 #define MEM         3 // Eingang fuer last richtung (Kondensator)
+
+#define ADC_PIN 0       // Temperaturmessung Diode Anode mit Pullup
+#define ADC_GND_PIN 1   // Temperaturmessung Diode Kathode: LOW
+
+
+#define KENNLINIE_SIZE 50
+#define MAX_TEMPERATUR 60
+#define MAX_ADCTEMPERATUR 224
+#define MIN_ADCTEMPERATUR 194
+uint8_t kennlinie[KENNLINIE_SIZE] = {233,232,231,230,229,229,228,227,226,225,225,224,223,222,221,221,220,219,218,217,217,216,215,214,213,213,212,211,210,209,209,208,207,206,205,205,204,203,202,201,201,200,199,198,197,197,196,195,194,193,193};
+
 
 #endif /* defines_h */
