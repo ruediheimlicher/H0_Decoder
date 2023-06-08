@@ -54,8 +54,8 @@
 #define MOTORDDR    DDRB
 #define MOTORPIN    PINB
 
-#define MOTORA      3
-#define MOTORB      4
+#define MOTORA      2
+#define MOTORB      3
 #define MOTORDIR 1
 
 // lokstatus-Bits
@@ -94,7 +94,7 @@
 
 
 #define LAMPE         3
-#define MEM         6 // Eingang fuer last richtung (Kondensator)
+#define MEM         5 // Eingang fuer last richtung (Kondensator)
 
 #define ADC_PIN 0       // Temperaturmessung Diode Anode mit Pullup
 #define ADC_GND_PIN 1   // Temperaturmessung Diode Kathode: LOW

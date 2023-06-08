@@ -131,6 +131,7 @@ volatile uint16_t	taktimpuls=0;
 
 volatile uint16_t   motorPWM=0;
 
+uint8_t lastdir = 0;
 
 uint8_t EEMEM WDT_ErrCount;	// Akkumulierte WDT Restart Events
 
@@ -175,8 +176,10 @@ uint16_t adctemperatur = 0;
 
 void slaveinit(void)
 {
+   STATUSDDR &= ~(1<<MEM);  // Eingang Mem-Status (last richtung)
    
-    OSZIPORT |= (1<<OSZIA);   //Pin 6 von PORT D als Ausgang fuer OSZI A
+   
+   OSZIPORT |= (1<<OSZIA);   //Pin 6 von PORT D als Ausgang fuer OSZI A
    OSZIDDR |= (1<<OSZIA);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
    OSZIPORT |= (1<<OSZIB);   //Pin 6 von PORT D als Ausgang fuer OSZI A
    OSZIDDR |= (1<<OSZIB);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
@@ -215,7 +218,7 @@ void slaveinit(void)
    STATUSDDR |= (1<<FUNKTIONOK);  // Data ist OK
    STATUSPORT &= ~(1<<FUNKTIONOK); // LO
 
-   STATUSDDR &= ~(1<<MEM);  // Eingang Mem-Status (last richtung)
+   
   
 
    
@@ -235,7 +238,7 @@ void slaveinit(void)
    LAMPEDDR |= (1<<LAMPE);  // Data ist OK
    LAMPEPORT &= ~(1<<LAMPE); // LO
 
-   initADC(MEM);
+   //initADC(MEM);
    
 
   
@@ -285,14 +288,14 @@ void timer2 (uint8_t wert)
 //	TCCR2 |= (1<<CS20)|(1<<CS21);	//Takt /64	Intervall 64 us
 
 	TCCR2 |= (1<<WGM21);		//	ClearTimerOnCompareMatch CTC
-   TCCR2 |= (1<<CS00); // no prescaler
+   TCCR2 |= (1<<CS00);     // no prescaler
 	//OC2 akt
 //	TCCR2 |= (1<<COM20);		//	OC2 Pin zuruecksetzen bei CTC
 
 
-	TIFR |= (1<<TOV2); 				//Clear TOV2 Timer/Counter Overflow Flag. clear pending interrupts
+	TIFR |= (1<<TOV2); 			//Clear TOV2 Timer/Counter Overflow Flag. clear pending interrupts
 	TIMSK |= (1<<OCIE2);			//CTC Interrupt aktivieren
-
+  // TIMSK |=(1<<TOIE2);  
 	TCNT2 = 0x00;					//Zaehler zuruecksetzen
 	
 	OCR2 = wert;					//Setzen des Compare Registers auf HIimpulsdauer
@@ -301,7 +304,8 @@ void timer2 (uint8_t wert)
 #pragma mark INT0
 ISR(INT0_vect) 
 {
-   OSZIATOG;
+   //OSZIATOG;
+   
    if (INT0status == 0) // neue Daten beginnen
    {
       INT0status |= (1<<INT0_START);
@@ -310,7 +314,7 @@ ISR(INT0_vect)
       INT0status |= (1<<INT0_PAKET_A); // erstes Paket lesen
       OSZIPORT &= ~(1<<PAKETA); 
       //TESTPORT &= ~(1<<TEST2);
-      OSZIALO; 
+      //OSZIALO; 
       //OSZIBLO;
       
       
@@ -342,7 +346,7 @@ ISR(INT0_vect)
       pausecounter = 0;
       abstandcounter = 0; 
       waitcounter = 0;
-      OSZIALO;
+      //OSZIALO;
       //   INT0status |= (1<<INT0_RISING); // wait for next rise
       //    MCUCR = (1<<ISC00) |(1<<ISC01); // raise int0 on rising edge
    }
@@ -352,7 +356,7 @@ ISR(INT0_vect)
 
 ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
 {
-   //OSZIATOG;
+   //OSZIBTOG;
    if (speed)
    {
       motorPWM++;
@@ -538,7 +542,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                            lokstatus |= (1<<RICHTUNGBIT);
                            richtungcounter = 0xFF;
                            speed = 0;
-                           MOTORPORT ^= (1<<MOTORB); // Richtung umpolen
+                           MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
                            
                         }
                      }
@@ -672,8 +676,8 @@ void main (void)
    
    
 	slaveinit();
-   
-//   int0_init();
+   lastdir = PINC & (1<<MEM);
+   int0_init();
 	
 	/* initialize the LCD */
 	lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
@@ -686,7 +690,7 @@ void main (void)
    
 	//timer0();
    
- //  timer2(4);
+   timer2(4);
 	
 	//initADC(TASTATURPIN);
 	
@@ -713,10 +717,10 @@ void main (void)
 
    //lcd_gotoxy(0,2);
    
-   //lcd_gotoxy(0,3);
-   //lcd_puts("data ");
+   lcd_gotoxy(14,3);
+   lcd_putint(lastdir);
    
-   initADC(0);
+   //initADC(0);
    
   
 
@@ -728,12 +732,12 @@ void main (void)
 		if (loopcount0 >= loopledtakt)
 		{
 			loopcount0=0;
-         
+         LOOPLEDPORT ^=(1<<LOOPLED);
          loopcount1++;
-         if (loopcount1 >= loopledtakt)
+         if (loopcount1 >= 4)
          {
             loopcount1 = 0;
-            LOOPLEDPORT ^=(1<<LOOPLED);
+           
            adctemperatur = readKanal(ADC_PIN);
             //temperatur = 8;
             lcd_gotoxy(0,2);
@@ -832,7 +836,7 @@ void main (void)
             lcd_putint(speed);
             lcd_putc(' ');
             //if (lokstatus &(1<<RICHTUNGBIT))
-            if (MOTORPIN & (1<<MOTORB))
+            if (MOTORPIN & (1<<MOTORDIR))
             {
                lcd_putc('V');
             }
@@ -840,6 +844,11 @@ void main (void)
             {
                lcd_putc('R');
             }
+         
+            lastdir = PINC & (1<<MEM);
+            lcd_putc(' ');
+            lcd_putint(lastdir);
+            
            // lcd_gotoxy(0,0);
             /*
              // uint32_t b = 0xFFFFFFFF;
