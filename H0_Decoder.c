@@ -96,6 +96,7 @@ volatile uint8_t   lokadresseA = 0;
 volatile uint8_t   lokadresseB = 0;
 
 volatile uint8_t   deflokadresse = 0;
+
 volatile uint8_t   lokstatus=0x00; // Funktion, Richtung
 
 volatile uint8_t   oldlokdata = 0;
@@ -135,7 +136,7 @@ uint8_t lastdir = 0;
 
 uint8_t EEMEM WDT_ErrCount;	// Akkumulierte WDT Restart Events
 
-
+volatile uint8_t   taskcounter = 0;
 
 // linear
 //volatile uint8_t   speedlookup[15] = {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252};
@@ -229,14 +230,15 @@ void slaveinit(void)
    MOTORPORT &= ~(1<<MOTORB); // LO
 
    
-   MOTORDDR |= (1<<MOTORDIR);  // Motor Dir
-   MOTORPORT &= ~(1<<MOTORDIR); // LO
+   DEVDDR |= (1<<MOTORDIR);  // Motor Dir
+   DEVPORT &= ~(1<<MOTORDIR); // LO
 
-   //STATUSDDR |= (1<<LAMPE);  // Data ist OK
-   //STATUSPORT &= ~(1<<LAMPE); // LO
+ 
+   LAMPEDDR |= (1<<LAMPEA);  // Lampe A
+   LAMPEPORT &= ~(1<<LAMPEA); // OFF
 
-   LAMPEDDR |= (1<<LAMPE);  // Data ist OK
-   LAMPEPORT &= ~(1<<LAMPE); // LO
+   LAMPEDDR |= (1<<LAMPEB);  // Lampe A
+   LAMPEPORT &= ~(1<<LAMPEB); // OFF
 
    //initADC(MEM);
    
@@ -363,13 +365,27 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
    }
    if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
-      MOTORPORT |= (1<<MOTORA); // OFF, Motor ist active LO
+      
+         {
+         MOTORPORT |= (1<<MOTORA); // MOTORA HI
+         MOTORPORT |= (1<<MOTORB); // MOTORB HI
+      }
       
    }
    
    if (motorPWM >= 254) //ON, neuer Motorimpuls
    {
-      MOTORPORT &= ~(1<<MOTORA);
+      if(DEVPORT & (1<<MOTORDIR)) // Richtungbit gesetzt
+      {
+         MOTORPORT |= (1<<MOTORA);
+         MOTORPORT &= ~(1<<MOTORB);// MOTORB PWM, OFF
+      }
+      else 
+      {
+         MOTORPORT |= (1<<MOTORB);
+         MOTORPORT &= ~(1<<MOTORA);// MOTORA PWM, OFF        
+      }
+      
       motorPWM = 0;
    }
    
@@ -398,11 +414,11 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
-                  rawfunktionA |= (1<<tritposition-8); // bit ist 1
+                  rawfunktionA |= (1<<(tritposition-8)); // bit ist 1
                }
                else // 
                {
-                  rawfunktionA &= ~(1<<tritposition-8); // bit ist 0
+                  rawfunktionA &= ~(1<<(tritposition-8)); // bit ist 0
                }
                
             }
@@ -438,11 +454,11 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
-                  rawfunktionB |= (1<<tritposition-8); // bit ist 1
+                  rawfunktionB |= (1<<(tritposition-8)); // bit ist 1
                }
                else // 
                {
-                  rawfunktionB &= ~(1<<tritposition-8); // bit ist 0
+                  rawfunktionB &= ~(1<<(tritposition-8)); // bit ist 0
                }
                
             }
@@ -452,11 +468,11 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
-                  rawdataB |= (1<<tritposition-10); // bit ist 1
+                  rawdataB |= (1<<(tritposition-10)); // bit ist 1
                }
                else 
                {
-                  rawdataB &= ~(1<<tritposition-10); // bit ist 0
+                  rawdataB &= ~(1<<(tritposition-10)); // bit ist 0
                }
             }
             
@@ -505,7 +521,8 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                      //   STATUSPORT |= (1<<DATAOK); // LED ON
                      //  STATUSPORT |= (1<<ADDRESSOK); // LED ON
                      
-                     lokstatus |= (1<<ADDRESSBIT);
+                     lokstatus |= (1<<ADDRESSBIT); // mein Paket
+                     
                      deflokadresse = lokadresseB;
                      //deffunktion = (rawdataB & 0x03); // bit 0,1 funktion als eigene var
                      deffunktion = rawfunktionB;
@@ -514,13 +531,14 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                      if (deffunktion)
                      {
                         lokstatus |= (1<<FUNKTIONBIT);
-                        STATUSPORT |= (1<<LAMPE);
+                        
                      }
                      else
                      {
                         lokstatus &= ~(1<<FUNKTIONBIT);
-                        STATUSPORT &= ~(1<<LAMPE);
                      }
+                     
+                     
                      for (uint8_t i=0;i<8;i++)
                      {
                         //if ((rawdataB & (1<<(2+i))))
@@ -542,8 +560,13 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                            lokstatus |= (1<<RICHTUNGBIT);
                            richtungcounter = 0xFF;
                            speed = 0;
-                           MOTORPORT ^= (1<<MOTORDIR); // Richtung umpolen
-                           
+                           DEVPORT ^= (1<<MOTORDIR); // Richtung umpolen
+                           lokstatus |= (1<<CHANGEBIT);
+                           taskcounter++;
+                           if (lokstatus & (1<<FUNKTIONBIT))
+                           {
+                              taskcounter += 10;
+                           }
                         }
                      }
                      else 
@@ -676,7 +699,7 @@ void main (void)
    
    
 	slaveinit();
-   lastdir = PINC & (1<<MEM);
+   lastdir = PINC;
    int0_init();
 	
 	/* initialize the LCD */
@@ -717,28 +740,40 @@ void main (void)
 
    //lcd_gotoxy(0,2);
    
-   lcd_gotoxy(14,3);
-   lcd_putint(lastdir);
+   //lcd_gotoxy(16,3);
+   //lcd_putint(lastdir);
    
    //initADC(0);
    
   
 
 	while (1)
-	{	
-		wdt_reset();
-				//Blinkanzeige
-		loopcount0++;
-		if (loopcount0 >= loopledtakt)
-		{
-			loopcount0=0;
+   {	
+      wdt_reset();
+      //Blinkanzeige
+      loopcount0++;
+      
+      if (lokstatus & (1<<CHANGEBIT))
+      {
+         lcd_gotoxy(12,2);
+         lcd_putint(taskcounter);
+         lokstatus &= ~(1<<CHANGEBIT);
+      }
+      
+      
+      if (loopcount0 >= loopledtakt)
+      {
+         loopcount0=0;
          LOOPLEDPORT ^=(1<<LOOPLED);
+         
+         
+         
          loopcount1++;
          if (loopcount1 >= 4)
          {
             loopcount1 = 0;
-           
-           adctemperatur = readKanal(ADC_PIN);
+            
+            adctemperatur = readKanal(ADC_PIN);
             //temperatur = 8;
             lcd_gotoxy(0,2);
             lcd_putint12(adctemperatur);
@@ -757,120 +792,141 @@ void main (void)
             }
             lcd_gotoxy(8,2);
             lcd_putint2(temperatur);
- 
+            
          }   
-            lcd_gotoxy(13,1);
-            lcd_puthex(deflokadresse);
+         lcd_gotoxy(13,1);
+         lcd_puthex(deflokadresse);
+         
+         //delay_ms(10);
+         
+         if (deflokadresse == LOK_ADRESSE)
+         {
             
-            //delay_ms(10);
+            lcd_gotoxy(17,1);
+            lcd_puts("OK ");
+            //lcd_puthex(deflokadresse);
             
-            if (deflokadresse == LOK_ADRESSE)
+         }
+         else 
+         {
+            lcd_gotoxy(17,1);
+            lcd_puts("Err");
+            //lcd_puthex(lokadresse);
+            
+         }
+         
+#pragma mark LCD
+         //uint8_t a = ((deflokdata >>4)& 0xFF);
+         /*
+          lcd_gotoxy(0,2);
+          lcd_puthex(a);
+          lcd_putc(' ');
+          a = ((deflokdata >>8)& 0xFF);
+          lcd_puthex(a);
+          lcd_putc(' ');
+          a = ((deflokdata >>12)& 0xFF);
+          lcd_puthex(a);
+          lcd_putc(' ');
+          lcd_puthex(newlokdata);
+          lcd_putc(' ');
+          
+          lcd_putc('*');
+          lcd_puthex(oldlokdata);
+          lcd_putc(' ');
+          
+          //lcd_puthex(rawdataA>>4);
+          */
+         
+         lcd_gotoxy(0,2);
+         // uint32_t b = 0xFFFFFFFF;
+         /*
+          for (uint8_t i=0;i<18;i++)
+          {
+          if (deflokdata & (1<<i))
+          {
+          lcd_putc('1');
+          }
+          else
+          {
+          lcd_putc('0');
+          }
+          
+          }
+          */
+         
+         // Lampen einstellen
+         if(DEVPIN & (1<<MOTORDIR))
+         {
+            if (lokstatus & (1<<FUNKTIONBIT))
             {
-               
-               lcd_gotoxy(17,1);
-               lcd_puts("OK ");
-               //lcd_puthex(deflokadresse);
-               
+               LAMPEPORT |=(1<<LAMPEA);
+               LAMPEPORT &= ~(1<<LAMPEB);
+            }
+            else
+            {
+               LAMPEPORT &= ~(1<<LAMPEA);
+               LAMPEPORT &= ~(1<<LAMPEB);
+            }
+         }
+         else
+         {
+            if (lokstatus & (1<<FUNKTIONBIT))
+            {
+               LAMPEPORT |=(1<<LAMPEB);
+               LAMPEPORT &= ~(1<<LAMPEA);
             }
             else 
             {
-               lcd_gotoxy(17,1);
-               lcd_puts("Err");
-               //lcd_puthex(lokadresse);
-               
+               LAMPEPORT &= ~(1<<LAMPEA);
+               LAMPEPORT &= ~(1<<LAMPEB);
             }
-            
-#pragma mark LCD
-            //uint8_t a = ((deflokdata >>4)& 0xFF);
-            /*
-             lcd_gotoxy(0,2);
-             lcd_puthex(a);
-             lcd_putc(' ');
-             a = ((deflokdata >>8)& 0xFF);
-             lcd_puthex(a);
-             lcd_putc(' ');
-             a = ((deflokdata >>12)& 0xFF);
-             lcd_puthex(a);
-             lcd_putc(' ');
-             lcd_puthex(newlokdata);
-             lcd_putc(' ');
-             
-             lcd_putc('*');
-             lcd_puthex(oldlokdata);
-             lcd_putc(' ');
-             
-             //lcd_puthex(rawdataA>>4);
-             */
-            
-            lcd_gotoxy(0,2);
-            // uint32_t b = 0xFFFFFFFF;
-            /*
-             for (uint8_t i=0;i<18;i++)
-             {
-             if (deflokdata & (1<<i))
-             {
-             lcd_putc('1');
-             }
-             else
-             {
-             lcd_putc('0');
-             }
-             
-             }
-             */
-            
-            lcd_gotoxy(0,3);
-            lcd_puthex(deflokdata);
-            lcd_putc(' ');
-            
-          //  if (lokstatus & (1<<FUNKTIONBIT))
-            if ( STATUSPIN & (1<<LAMPE))
-            {
-               lcd_putc('1');
-            }
-            else
-            {
-               lcd_putc('0');
-            }
-            lcd_putc(' ');
-            lcd_putint(speed);
-            lcd_putc(' ');
-            //if (lokstatus &(1<<RICHTUNGBIT))
-            if (MOTORPIN & (1<<MOTORDIR))
-            {
-               lcd_putc('V');
-            }
-            else
-            {
-               lcd_putc('R');
-            }
+         }// if (DEVPIN & (1<<MOTORDIR))
+
          
-            lastdir = PINC & (1<<MEM);
-            lcd_putc(' ');
-            lcd_putint(lastdir);
-            
-           // lcd_gotoxy(0,0);
-            /*
-             // uint32_t b = 0xFFFFFFFF;
-             for (uint8_t i=0;i<18;i++)
-             {
-             if (rawdataB & (1<<i))
-             {
-             lcd_putc('1');
-             }
-             
-             else
-             {
-             lcd_putc('0');
-             }
-             
-             }
-             */
+         lcd_gotoxy(0,3);
+         lcd_puthex(deflokdata);
+         lcd_putc(' ');
          
-			
-		} // loopcount0 >= loopledtakt
-		
-	}//while
+         if (lokstatus & (1<<FUNKTIONBIT))
+         //if ( STATUSPIN & (1<<LAMPEA))
+         {
+            lcd_putc('1');
+            
+         }
+         else
+         {
+            lcd_putc('0');
+         }
+         lcd_putc(' ');
+         lcd_putint(speed);
+         lcd_putc(' ');
+         //if (lokstatus &(1<<RICHTUNGBIT))
+         if (DEVPIN & (1<<MOTORDIR))
+         {
+            
+            lcd_putc('V');
+            //LAMPEPORT |=(1<<LAMPEA);
+            //LAMPEPORT &=(1<<LAMPEB);
+         }
+         else
+         {
+            lcd_putc('R');
+            //LAMPEPORT |=(1<<LAMPEB);
+            //LAMPEPORT &=(1<<LAMPEA);
+         }
+         
+         //lastdir = PINC & (1<<MEM); // aktueller Wert
+         lcd_putc(' ');
+         lcd_putint(lokstatus);
+
+
+         lcd_putc(' ');
+         lcd_putint(lastdir);
+         
+          
+      } // loopcount0 >= loopledtakt
+      
+   }//while
 
 
 // return 0;
