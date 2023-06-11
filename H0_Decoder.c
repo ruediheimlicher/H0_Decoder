@@ -114,7 +114,10 @@ volatile uint8_t   rawfunktionB = 0;
 
 
 // ***
-volatile uint8_t   speed = 0;
+volatile uint8_t   speed = 0; // Motor
+
+volatile uint8_t   dimm = 0; // LED dimmwert
+volatile uint8_t   ledpwm = 0; // LED PWM
 
 volatile uint8_t   oldfunktion = 0;
 volatile uint8_t   funktion = 0;
@@ -223,23 +226,24 @@ void slaveinit(void)
   
 
    
-   MOTORDDR |= (1<<MOTORA);  // Motor A
-   MOTORPORT &= ~(1<<MOTORA); // LO
+   MOTORDDR |= (1<<MOTORA_PIN);  // Motor A
+   MOTORPORT &= ~(1<<MOTORA_PIN); // LO
 
-   MOTORDDR |= (1<<MOTORB);  // Motor B
-   MOTORPORT &= ~(1<<MOTORB); // LO
+   MOTORDDR |= (1<<MOTORB_PIN);  // Motor B
+   MOTORPORT &= ~(1<<MOTORB_PIN); // LO
 
    
-   DEVDDR |= (1<<MOTORDIR);  // Motor Dir
-   DEVPORT &= ~(1<<MOTORDIR); // LO
+   DEVDDR |= (1<<MOTORDIR_PIN);  // Motor Dir
+   DEVPORT &= ~(1<<MOTORDIR_PIN); // LO
 
  
-   LAMPEDDR |= (1<<LAMPEA);  // Lampe A
-   LAMPEPORT &= ~(1<<LAMPEA); // OFF
+   LAMPEDDR |= (1<<LAMPEA_PIN);  // Lampe A
+   LAMPEPORT &= ~(1<<LAMPEA_PIN); // OFF
 
-   LAMPEDDR |= (1<<LAMPEB);  // Lampe A
-   LAMPEPORT &= ~(1<<LAMPEB); // OFF
+   LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe A
+   LAMPEPORT &= ~(1<<LAMPEB_PIN); // OFF
 
+   
    //initADC(MEM);
    
 
@@ -303,7 +307,7 @@ void timer2 (uint8_t wert)
 	OCR2 = wert;					//Setzen des Compare Registers auf HIimpulsdauer
 } 
 
-#pragma mark INT0
+// MARK: INT0
 ISR(INT0_vect) 
 {
    //OSZIATOG;
@@ -329,14 +333,9 @@ ISR(INT0_vect)
       lokdata = 0;
       funktion = 0;
       
-  //    rawdataA = 0;
-  //    rawdataB = 0;
-
-      
-//      HIimpulsdauer = 0;
-      
+       
       // A85
- 
+      
       
       // A85
    } 
@@ -349,48 +348,48 @@ ISR(INT0_vect)
       abstandcounter = 0; 
       waitcounter = 0;
       //OSZIALO;
-      //   INT0status |= (1<<INT0_RISING); // wait for next rise
-      //    MCUCR = (1<<ISC00) |(1<<ISC01); // raise int0 on rising edge
    }
 }
 
-#pragma mark ISR Timer2
+// MARK: ISR Timer2
 
 ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
 {
    //OSZIBTOG;
+    
    if (speed)
    {
       motorPWM++;
    }
+   
    if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
       
-         {
-         MOTORPORT |= (1<<MOTORA); // MOTORA HI
-         MOTORPORT |= (1<<MOTORB); // MOTORB HI
+      {
+         MOTORPORT |= (1<<MOTORA_PIN); // MOTORA_PIN HI
+         MOTORPORT |= (1<<MOTORB_PIN); // MOTORB_PIN HI
       }
       
    }
    
    if (motorPWM >= 254) //ON, neuer Motorimpuls
    {
-      if(DEVPORT & (1<<MOTORDIR)) // Richtungbit gesetzt
+      if(DEVPORT & (1<<MOTORDIR_PIN)) // Richtungbit gesetzt
       {
-         MOTORPORT |= (1<<MOTORA);
-         MOTORPORT &= ~(1<<MOTORB);// MOTORB PWM, OFF
+         MOTORPORT |= (1<<MOTORA_PIN);
+         MOTORPORT &= ~(1<<MOTORB_PIN);// MOTORB_PIN PWM, OFF
       }
       else 
       {
-         MOTORPORT |= (1<<MOTORB);
-         MOTORPORT &= ~(1<<MOTORA);// MOTORA PWM, OFF        
+         MOTORPORT |= (1<<MOTORB_PIN);
+         MOTORPORT &= ~(1<<MOTORA_PIN);// MOTORA_PIN PWM, OFF        
       }
       
       motorPWM = 0;
    }
    
    
-#pragma mark TIMER0 INT0
+// MARK: TIMER0 INT0
    if (INT0status & (1<<INT0_WAIT))
    {
       waitcounter++;
@@ -492,7 +491,6 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
             //           TESTPORT |= (1<<TEST1);
          }
          
-         
          if (tritposition < 17)
          {
             tritposition ++;
@@ -504,22 +502,20 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
             {
                oldfunktion = funktion;
                
-               INT0status &= ~(1<<INT0_PAKET_A); // Bit fuer erstes Paket weg
-               INT0status |= (1<<INT0_PAKET_B); // Bit fuer zweites Paket setzen
+               INT0status &= ~(1<<INT0_PAKET_A);   // Bit fuer erstes Paket weg
+               INT0status |= (1<<INT0_PAKET_B);    // Bit fuer zweites Paket setzen
                tritposition = 0;
             }
             else if (INT0status & (1<<INT0_PAKET_B)) // zweites Paket, Werte testen
             {
                
                
-#pragma mark EQUAL
+// MARK: EQUAL
                if (lokadresseA && ((rawfunktionA == rawfunktionB) && (rawdataA == rawdataB) && (lokadresseA == lokadresseB))) // Lokadresse > 0 und Lokadresse und Data OK
                {
                   if (lokadresseB == LOK_ADRESSE)
                   {
                      // Daten uebernehmen
-                     //   STATUSPORT |= (1<<DATAOK); // LED ON
-                     //  STATUSPORT |= (1<<ADDRESSOK); // LED ON
                      
                      lokstatus |= (1<<ADDRESSBIT); // mein Paket
                      
@@ -560,7 +556,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                            lokstatus |= (1<<RICHTUNGBIT);
                            richtungcounter = 0xFF;
                            speed = 0;
-                           DEVPORT ^= (1<<MOTORDIR); // Richtung umpolen
+                           DEVPORT ^= (1<<MOTORDIR_PIN); // Richtung umpolen
                            lokstatus |= (1<<CHANGEBIT);
                            taskcounter++;
                            if (lokstatus & (1<<FUNKTIONBIT))
@@ -572,7 +568,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
                      else 
                      {  
                         lokstatus &= ~(1<<RICHTUNGBIT); 
-#pragma mark speed                           
+// MARK: speed                           
                         switch (deflokdata)
                         {
                            case 0:
@@ -672,8 +668,6 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
       {
          abstandcounter = 0;
          //   OSZIAHI;
-         //     OSZIPORT |= (1<<PAKETA); 
-         //    OSZIPORT &= ~(1<<PAKETB);   
       }
       
       if (pausecounter < 120)
@@ -738,14 +732,7 @@ void main (void)
    //lcd_gotoxy(0,2);
    lcd_puts(" adrIN");
 
-   //lcd_gotoxy(0,2);
    
-   //lcd_gotoxy(16,3);
-   //lcd_putint(lastdir);
-   
-   //initADC(0);
-   
-  
 
 	while (1)
    {	
@@ -797,8 +784,7 @@ void main (void)
          lcd_gotoxy(13,1);
          lcd_puthex(deflokadresse);
          
-         //delay_ms(10);
-         
+          
          if (deflokadresse == LOK_ADRESSE)
          {
             
@@ -815,7 +801,7 @@ void main (void)
             
          }
          
-#pragma mark LCD
+// MARK: LCD
          //uint8_t a = ((deflokdata >>4)& 0xFF);
          /*
           lcd_gotoxy(0,2);
@@ -855,32 +841,32 @@ void main (void)
           */
          
          // Lampen einstellen
-         if(DEVPIN & (1<<MOTORDIR))
+         if(DEVPIN & (1<<MOTORDIR_PIN))
          {
             if (lokstatus & (1<<FUNKTIONBIT))
             {
-               LAMPEPORT |=(1<<LAMPEA);
-               LAMPEPORT &= ~(1<<LAMPEB);
+               LAMPEPORT |=(1<<LAMPEA_PIN);
+               LAMPEPORT &= ~(1<<LAMPEB_PIN);
             }
             else
             {
-               LAMPEPORT &= ~(1<<LAMPEA);
-               LAMPEPORT &= ~(1<<LAMPEB);
+               LAMPEPORT &= ~(1<<LAMPEA_PIN);
+               LAMPEPORT &= ~(1<<LAMPEB_PIN);
             }
          }
          else
          {
             if (lokstatus & (1<<FUNKTIONBIT))
             {
-               LAMPEPORT |=(1<<LAMPEB);
-               LAMPEPORT &= ~(1<<LAMPEA);
+               LAMPEPORT |=(1<<LAMPEB_PIN);
+               LAMPEPORT &= ~(1<<LAMPEA_PIN);
             }
             else 
             {
-               LAMPEPORT &= ~(1<<LAMPEA);
-               LAMPEPORT &= ~(1<<LAMPEB);
+               LAMPEPORT &= ~(1<<LAMPEA_PIN);
+               LAMPEPORT &= ~(1<<LAMPEB_PIN);
             }
-         }// if (DEVPIN & (1<<MOTORDIR))
+         }// if (DEVPIN & (1<<MOTORDIR_PIN))
 
          
          lcd_gotoxy(0,3);
@@ -888,7 +874,7 @@ void main (void)
          lcd_putc(' ');
          
          if (lokstatus & (1<<FUNKTIONBIT))
-         //if ( STATUSPIN & (1<<LAMPEA))
+         //if ( STATUSPIN & (1<<LAMPEA_PIN))
          {
             lcd_putc('1');
             
@@ -901,18 +887,18 @@ void main (void)
          lcd_putint(speed);
          lcd_putc(' ');
          //if (lokstatus &(1<<RICHTUNGBIT))
-         if (DEVPIN & (1<<MOTORDIR))
+         if (DEVPIN & (1<<MOTORDIR_PIN))
          {
             
             lcd_putc('V');
-            //LAMPEPORT |=(1<<LAMPEA);
-            //LAMPEPORT &=(1<<LAMPEB);
+            //LAMPEPORT |=(1<<LAMPEA_PIN);
+            //LAMPEPORT &=(1<<LAMPEB_PIN);
          }
          else
          {
             lcd_putc('R');
-            //LAMPEPORT |=(1<<LAMPEB);
-            //LAMPEPORT &=(1<<LAMPEA);
+            //LAMPEPORT |=(1<<LAMPEB_PIN);
+            //LAMPEPORT &=(1<<LAMPEA_PIN);
          }
          
          //lastdir = PINC & (1<<MEM); // aktueller Wert

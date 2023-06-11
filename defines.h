@@ -54,14 +54,14 @@
 #define MOTORDDR    DDRB
 #define MOTORPIN    PINB
 
-#define MOTORA       2
-#define MOTORB       3
+#define MOTORA_PIN       2
+#define MOTORB_PIN       3
 
 // PINs fuer device: Richtung, 
 #define DEVPORT   PORTB
 #define DEVDDR    DDRB
 #define DEVPIN    PINB
-#define MOTORDIR     1
+#define MOTORDIR_PIN     1
 
 // lokstatus-Bits
 
@@ -93,12 +93,12 @@
 #define LAMPEPORT PORTD
 #define LAMPEDDR  DDRD
 #define LAMPEPIN  PIND
+#define LEDPWM    50
 
 
-
-#define LAMPEA          3
-#define LAMPEB          4
-#define MEM         5 // Eingang fuer last richtung (Kondensator)
+#define LAMPEA_PIN          3
+#define LAMPEB_PIN          4
+#define MEM             0 // Eingang fuer last richtung (Kondensator)
 
 #define ADC_PIN 0       // Temperaturmessung Diode Anode mit Pullup
 #define ADC_GND_PIN 1   // Temperaturmessung Diode Kathode: LOW
