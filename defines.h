@@ -19,7 +19,7 @@
 #define OSZIA 6            // 
 #define OSZIB 7            // Impuls für Servo
 
-#define INT_0   4
+#define INT_0_PIN   4
 
 #define PAKETA   0
 #define PAKETB   1
@@ -80,8 +80,8 @@
 #define TRIT3 3
 #define TRIT4 4
 
-#define HI_IMPULSDAUER 10
-#define LO_IMPULSDAUER 20
+//#define HI_IMPULSDAUER 10
+//#define LO_IMPULSDAUER 20
 
 #define INT0_START   0
 #define INT0_END   1

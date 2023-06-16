@@ -188,8 +188,8 @@ void slaveinit(void)
    OSZIPORT |= (1<<OSZIB);   //Pin 6 von PORT D als Ausgang fuer OSZI A
    OSZIDDR |= (1<<OSZIB);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
 
-   //OSZIPORT |= (1<<INT_0);   //
-   //OSZIDDR |= (1<<INT_0);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
+   //OSZIPORT |= (1<<INT_0_PIN);   //
+   //OSZIDDR |= (1<<INT_0_PIN);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
 
    OSZIDDR |= (1<<PAKETA);
    OSZIPORT |= (1<<PAKETA);   //PAKETA
@@ -307,7 +307,7 @@ void timer2 (uint8_t wert)
 	OCR2 = wert;					//Setzen des Compare Registers auf HIimpulsdauer
 } 
 
-// MARK: INT0
+// MARK: ISR INT0
 ISR(INT0_vect) 
 {
    //OSZIATOG;
@@ -356,6 +356,24 @@ ISR(INT0_vect)
 ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
 {
    //OSZIBTOG;
+   
+   if(dimm)
+   {
+      dimm++;
+   }
+   else
+   {
+      TESTPORT |= (1<<TEST0); // TEST HI
+      dimm = 1;
+   }
+   
+   if(dimm > LEDPWM)
+   {
+      
+      
+      TESTPORT &= ~(1<<TEST0); // TEST LO
+   }
+      
     
    if (speed)
    {
@@ -389,7 +407,7 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
    }
    
    
-// MARK: TIMER0 INT0
+// MARK: ISR TIMER2_COMPA INT0
    if (INT0status & (1<<INT0_WAIT))
    {
       waitcounter++;
@@ -732,7 +750,7 @@ void main (void)
    //lcd_gotoxy(0,2);
    lcd_puts(" adrIN");
 
-   
+   ledpwm = LEDPWM;
 
 	while (1)
    {	
@@ -753,6 +771,7 @@ void main (void)
          loopcount0=0;
          LOOPLEDPORT ^=(1<<LOOPLED);
          
+         //TESTPORT ^= (1<<TEST0);
          
          
          loopcount1++;
@@ -795,6 +814,7 @@ void main (void)
          }
          else 
          {
+            OSZIAHI;
             lcd_gotoxy(17,1);
             lcd_puts("Err");
             //lcd_puthex(lokadresse);
