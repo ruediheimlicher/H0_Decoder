@@ -408,6 +408,12 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
    
    
 // MARK: ISR TIMER2_COMPA INT0
+   if((INT0status == 0) &&  ((INPIN & (1<<DATAPIN))))// neue Daten beginnen
+   {
+      OSZIBLO;
+      INT0status |= (1<<INT0_WAIT); // delay, um Wert des Eingangs zum richtigen Zeitpunkt zu messen
+   }
+   
    if (INT0status & (1<<INT0_WAIT))
    {
       waitcounter++;
@@ -697,10 +703,18 @@ ISR(TIMER2_COMP_vect) // Schaltet Impuls an SERVOPIN0 aus
          //OSZIBHI; //pause detektiert
          pausecounter = 0;
          INT0status = 0; //Neue Daten abwarten
+         OSZIBHI;
+         waitcounter = 0;
+         tritposition = 0;
+         lokadresse = 0;
+         lokdata = 0;
+         funktion = 0;
+
          return;
       }
       
    } // input LO
+   //OSZIBHI;
 }
 
 
@@ -712,7 +726,7 @@ void main (void)
    
 	slaveinit();
    lastdir = PINC;
-   int0_init();
+   //int0_init();
 	
 	/* initialize the LCD */
 	lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
