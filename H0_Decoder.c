@@ -180,8 +180,8 @@ void slaveinit(void)
    OSZIPORT |= (1<<OSZIB);   //Pin 6 von PORT D als Ausgang fuer OSZI A
    OSZIDDR |= (1<<OSZIB);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
 
-   OSZIPORT |= (1<<INT_0);   //
-   OSZIDDR |= (1<<INT_0);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
+   //OSZIPORT |= (1<<INT_0);   //
+   //OSZIDDR |= (1<<INT_0);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
 
    OSZIDDR |= (1<<PAKETA);
    OSZIPORT |= (1<<PAKETA);   //PAKETA
@@ -245,7 +245,7 @@ void slaveinit(void)
 
 void int0_init(void)
 {
-   EICRA |= (1 << ISC00) | (1 << ISC01);  // Trigger interrupt on any logical change
+   EICRA |= (1 << ISC00) | (1 << ISC01);  // Trigger interrupt on rising edge
    EIMSK |= (1 << INT0);  // Enable external interrupt INT0
 
  //  INT0status |= (1<<INT0_RISING);
@@ -287,7 +287,7 @@ ISR(INT0_vect)
       OSZIALO; 
       
       
-      OSZIPORT &= ~(1<<INT_0);
+  //    OSZIPORT &= ~(1<<INT_0);
       
       pausecounter = 0; // pausen detektieren, reset fuer jedes HI
       abstandcounter = 0;// zweites Paket detektieren, 
@@ -315,7 +315,7 @@ ISR(INT0_vect)
       INT0status |= (1<<INT0_WAIT);
       
       
-      OSZIPORT &= ~(1<<INT_0);
+  //    OSZIPORT &= ~(1<<INT_0);
       pausecounter = 0;
       abstandcounter = 0; 
       waitcounter = 0;
