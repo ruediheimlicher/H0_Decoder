@@ -13,3 +13,4 @@ ATmega16*
 oled*
 avr_lib*
 TWI-*
+*.webloc
