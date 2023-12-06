@@ -19,7 +19,7 @@
 #include "defines.h"
 #include <stdint.h>
 #include <util/twi.h>
-#include "i2c.c"
+//#include "i2c.c"
 
 
 #include "lcd.c"
@@ -27,6 +27,7 @@
 //#include "twislave.c"
 #include "lcd_a.c"
 
+#include "lcd_I2C.h"
 
 //#include "lcd_o.h"
 //https://github.com/Sylaina/oled-display/tree/master
@@ -263,21 +264,7 @@ void slaveinit(void)
    DDRC |= (1<<4);   //Pin 1 von PORT C als Ausgang (SDA)
    PORTC |= (1<<4);   //   ON
 
-   i2c_init();
-   lcd_init();
-
-   i2c_start(0x4F);
-   i2c_write_byte(0xF0);
-   i2c_stop();
-   
-   //lcd_clear();
-   lcd_write("TEST A328:");
-   for (uint8_t i=0;i<4;i++)
-   {
-      //lcd_write("A");
-      lcd_write_char('A'+i);
-   }
-    
+      
 }
 
 
@@ -768,7 +755,7 @@ void main (void)
    
  //  TWI_Init();
    _delay_ms(100);
- //  LCD_Init();
+   LCD_init();
    uint8_t counter = 0;
    uint8_t byte = 0;
    uint8_t lcdcounter = 0;
@@ -800,24 +787,9 @@ void main (void)
          loopcount1++;
          if (loopcount1 >= speedchangetakt)
          {
-            /*
-            i2c_start(0x41);
-            byte =((~i2c_readNak())>>4)&0x0F;
-            
-            //i2c_stop();
-             */
-            i2c_start(0x40);
-            
-            i2c_write_byte(0xF0);
-            i2c_stop();
-
+   
             //Output to LCD
-            lcd_clear();
-            
-            lcd_write("Byte %2i",byte);
-            lcd_write("lcdcounter %2i",lcdcounter);
-
-            lcdcounter++;
+             lcdcounter++;
             //LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
             loopcount1 = 0;
             //OSZIATOG;
@@ -873,17 +845,8 @@ void main (void)
                 LOOPLEDPORT ^= (1<<LOOPLED);
                 counter++;
                 
-                i2c_start(0x40);
-                
-                i2c_write_byte(0xF0);
-                i2c_stop();
-
-                //Output to LCD
-                //lcd_clear();
-                
-                //lcd_write("Byte %2i",byte);
-                lcd_write("lcdcounter %2i",lcdcounter);
-
+   
+  
                 lcdcounter++;
 
                 //lcd_gotoxy(16,1);
