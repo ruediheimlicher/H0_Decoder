@@ -185,8 +185,8 @@ void
 lcd_send_cmd(void)
 {
         /* Data in '164 is a command, so RS must be low (0) */
-        LCD_PORT &= ~_BV(LCD_RSDS_PIN); 
-        lcd_strobe_E();	
+        LCD_PORT &= ~_BV(LCD_RSDS_PIN);  // 0
+        lcd_strobe_E();	// ENABLE 500uS
         _delay_us(60);
 }
 
@@ -198,8 +198,9 @@ void
 lcd_send_char(void)
 {
         /* Data in '164 is a character, so RS must be high (1) */
-        LCD_PORT |= _BV(LCD_RSDS_PIN); 
-        lcd_strobe_E();
+        LCD_PORT |= _BV(LCD_RSDS_PIN); // 1
+        lcd_strobe_E();// ENABLE 500uS
+   _delay_us(60);
         _delay_us(60);
 }
 
@@ -323,7 +324,7 @@ lcd_strobe_E(void)
 void
 lcd_cursor_home(void)
 {
-        lcd_load_byte(LCD_CMD_HOME);
+        lcd_load_byte(LCD_CMD_HOME); // 0x02
         lcd_send_cmd();
 }
 
@@ -379,6 +380,7 @@ Returns:  none
 *************************************************************************/
 void lcd_gotoxy(uint8_t x, uint8_t y)
 {
+   // LCD_DDRAM 7
    switch (y)
    {
       case 0:

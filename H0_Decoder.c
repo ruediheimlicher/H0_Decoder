@@ -19,14 +19,18 @@
 #include "defines.h"
 #include <stdint.h>
 #include <util/twi.h>
-#include "i2c.c"
+//#include "i2c.c"
 
+//#include "i2c_master.c"
+//#include "liquid_crystal_i2c.h"
 
 #include "lcd.c"
 
 //#include "twislave.c"
 #include "lcd_a.c"
 
+#include "lcd_I2C.c"
+#include "twi.c"
 
 //#include "lcd_o.h"
 //https://github.com/Sylaina/oled-display/tree/master
@@ -204,6 +208,13 @@ volatile uint8_t   maxspeed =  252;//prov.
 uint16_t loopcounter0;
 uint16_t loopcounter1;
 
+//LiquidCrystalDevice_t lq;
+
+extern void LCD_init(void);
+
+extern void TWI_start(void);
+
+
 
 void slaveinit(void)
 {
@@ -263,6 +274,7 @@ void slaveinit(void)
    DDRC |= (1<<4);   //Pin 1 von PORT C als Ausgang (SDA)
    PORTC |= (1<<4);   //   ON
 
+   /*
    i2c_init();
    lcd_init();
 
@@ -277,7 +289,19 @@ void slaveinit(void)
       //lcd_write("A");
       lcd_write_char('A'+i);
    }
-    
+    */
+   
+   
+   LCD_init();
+   /*
+   LCD_clearScreen();
+   LCD_displayString("Abdelrahman");
+   _delay_ms(1000);
+   LCD_moveCursor(1, 0);
+   LCD_displayString("elsayed 123");
+   _delay_ms(1000);
+*/
+  
 }
 
 
@@ -801,12 +825,7 @@ void main (void)
          if (loopcount1 >= speedchangetakt)
          {
             /*
-            i2c_start(0x41);
-            byte =((~i2c_readNak())>>4)&0x0F;
-            
-            //i2c_stop();
-             */
-            i2c_start(0x40);
+             i2c_start(0x40);
             
             i2c_write_byte(0xF0);
             i2c_stop();
@@ -816,7 +835,8 @@ void main (void)
             
             lcd_write("Byte %2i",byte);
             lcd_write("lcdcounter %2i",lcdcounter);
-
+             */
+            
             lcdcounter++;
             //LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
             loopcount1 = 0;

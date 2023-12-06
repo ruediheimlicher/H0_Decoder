@@ -66,20 +66,20 @@ void lcd_init() {
 	unsigned char loop=3;
 
 	while(loop--){
-		lcd_out(LCD_D4 | LCD_D5 | LCD_E);
+		lcd_out(LCD_D4 | LCD_D5 | LCD_E); // 0x34
 		_delay_ms(10);
-		lcd_out(LCD_D4 | LCD_D5);
+		lcd_out(LCD_D4 | LCD_D5); // 0x30
 		_delay_ms(100);
 	}
 
 	// 4 bit mode
-	lcd_out(LCD_D5 | LCD_E);
+	lcd_out(LCD_D5 | LCD_E); // 0x24
 	_delay_ms(10);
-	lcd_out(LCD_D5);
+	lcd_out(LCD_D5); // 0x20
 	_delay_ms(10);
 
-	lcd_nibble_out(0x28, 0);
-	lcd_nibble_out(0x0C, 0);
+	lcd_nibble_out(0x28, 0); // LCD_TWO_LINES_FOUR_BITS_MODE
+	lcd_nibble_out(0x0C, 0); // LCD_CURSOR_OFF
 
 	lcd_clear();
 }

@@ -59,6 +59,24 @@ uint8_t i2c_write_byte (uint8_t byte){
 }
 
 //***************************************************************************************
+uint8_t i2c_write_string(const char *s)
+{
+   register char c;
+   uint8_t returnwert = 0;
+   while ( (c = *s++) ) 
+   {
+      returnwert = i2c_write_byte(c);
+      if(returnwert)
+      {
+         return returnwert;
+      }
+   }
+   return 0;
+}
+
+
+
+//***************************************************************************************
 uint8_t i2c_readNak(void)
 {
 	uint16_t timeout = 0;
