@@ -40,9 +40,9 @@
 
 
 
-#define STATUSPORT   PORTC
-#define STATUSDDR    DDRC
-#define STATUSPIN    PINC
+#define I2CPORT   PORTC
+#define I2CDDR    DDRC
+
 
 // Pins
 #define FUNKTIONOK   2
@@ -53,9 +53,8 @@
 #define MOTORDDR    DDRB
 #define MOTORPIN    PINB
 
-#define MOTORA      2
-#define MOTORB      3
-#define MOTORDIR 1
+#define MOTORA_PIN      2
+#define MOTORB_PIN      3
 
 // lokstatus-Bits
 #define FUNKTION     0
@@ -64,11 +63,21 @@
 
 
 
+
 #define ADDRESSBIT   0
+#define STARTBIT        1 // Startimpuls
 #define DATABIT      2
+#define PROGBIT         3 // Programmiermodus
 #define FUNKTIONBIT  4
-#define OLDRICHTUNGBIT  5
+#define RUNBIT  5
 #define RICHTUNGBIT  6
+#define LOK_CHANGEBIT       7  
+
+
+#define STARTDELAY      100
+
+#define STARTWAIT 100
+
 
 #define TRIT0 0
 #define TRIT1 1
@@ -91,10 +100,19 @@
 #define LAMPEDDR  DDRD
 #define LAMPEPIN   PIND
 
+#define LED_CHANGEBIT       7  
+#define LAMPEA_PIN      1 
+#define LAMPEB_PIN      0
+
+
 #define LAMPE         3
 #define MEM           6 // Eingang fuer last richtung (Kondensator)
 
+#define LAMPEMAX 0x40 // 50%
 
+#define FIRSTRUN_END 80
 
+#define MAXLOOP0 0x0AFE
+#define MAXLOOP1 0x0AFF
 
 #endif /* defines_h */

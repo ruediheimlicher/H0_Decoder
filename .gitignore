@@ -9,3 +9,7 @@ build/*
 *.hex
 *.o
 .dep/*
+ATmega16*
+oled*
+avr_lib*
+TWI-*
