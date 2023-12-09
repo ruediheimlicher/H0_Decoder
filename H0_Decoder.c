@@ -19,13 +19,12 @@
 #include "defines.h"
 #include <stdint.h>
 #include <util/twi.h>
-#include "i2c.c"
 
+#include "i2c.c"
 
 #include "lcd.c"
 
 //#include "twislave.c"
-#include "lcd_a.c"
 
 
 //#include "lcd_o.h"
@@ -65,7 +64,7 @@ uint8_t  LOK_ADRESSE = 0xCC; //	11001100	TrinŠr
 #define INT0_FALLING		1
 
 
-void lcd_puts(const char *s);
+//void lcd_puts(const char *s);
 //volatile uint8_t rxbuffer[buffer_size];
 
 /*Der Sendebuffer, der vom Master ausgelesen werden kann.*/
@@ -725,12 +724,12 @@ void main (void)
 //   int0_init();
 	
 	/* initialize the LCD */
-	lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
+//	lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
 
-	lcd_puts("Guten Tag\0");
+//	lcd_puts("Guten Tag\0");
 	_delay_ms(100);
-	lcd_cls();
-	lcd_puts("H0-Decoder A328");
+//	lcd_cls();
+//	lcd_puts("H0-Decoder A328");
 	
    
 	//timer0();
@@ -753,12 +752,12 @@ void main (void)
 
    sei();
 
-   lcd_gotoxy(0,1);
-   lcd_puts("ADR ");
-   lcd_puthex(LOK_ADRESSE);
+ //  lcd_gotoxy(0,1);
+ //  lcd_puts("ADR ");
+ //  lcd_puthex(LOK_ADRESSE);
    
    //lcd_gotoxy(0,2);
-   lcd_puts(" adrIN");
+ //  lcd_puts(" adrIN");
 
    //lcd_gotoxy(0,2);
    
@@ -769,9 +768,14 @@ void main (void)
  //  TWI_Init();
    _delay_ms(100);
  //  LCD_Init();
+   
+   lcd_nibble_out(LCD_ADDR_LINE1,0);
+   lcd_write("LCD I2C H0-Decoder");
+
    uint8_t counter = 0;
    uint8_t byte = 0;
    uint8_t lcdcounter = 0;
+   uint8_t paketcounter = 0;
 	while (1)
    {   
       // Timing: loop: 40 us, takt 85us, mit if-teil 160 us
@@ -800,24 +804,6 @@ void main (void)
          loopcount1++;
          if (loopcount1 >= speedchangetakt)
          {
-            /*
-            i2c_start(0x41);
-            byte =((~i2c_readNak())>>4)&0x0F;
-            
-            //i2c_stop();
-             */
-            i2c_start(0x40);
-            
-            i2c_write_byte(0xF0);
-            i2c_stop();
-
-            //Output to LCD
-            lcd_clear();
-            
-            lcd_write("Byte %2i",byte);
-            lcd_write("lcdcounter %2i",lcdcounter);
-
-            lcdcounter++;
             //LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
             loopcount1 = 0;
             //OSZIATOG;
@@ -872,25 +858,30 @@ void main (void)
                 loopcounter1=0;
                 LOOPLEDPORT ^= (1<<LOOPLED);
                 counter++;
-                
-                i2c_start(0x40);
-                
-                i2c_write_byte(0xF0);
-                i2c_stop();
-
-                //Output to LCD
-                //lcd_clear();
-                
-                //lcd_write("Byte %2i",byte);
-                lcd_write("lcdcounter %2i",lcdcounter);
-
+                lcd_gotoxy((lcdcounter & 0x0F),1);
+                //lcd_write_char(' ');
+                //OSZIBLO;
+                lcd_write_char('A'+(lcdcounter & 0x0F));
+                //OSZIBHI;
+                //
                 lcdcounter++;
+                if(lcdcounter > 0x0F)
+                {
+                   lcd_clr_line(1);
+                   lcd_gotoxy(10,2);
+                   //lcd_puts("          ");
+                   
+                   lcdcounter = 0;
+                   lcd_gotoxy(10,2);
+                   _delay_ms(1);
+                   //lcd_write_char('0'+(paketcounter & 0x07));
+                   lcd_putint(paketcounter);
+                   paketcounter++;
+                   
+                   //lcd_clear();
+                }
 
-                //lcd_gotoxy(16,1);
-                //lcd_putint(counter);
-               // LCD_setPosition(0,1);
-               // LCD_sendString("hallo");
-             }
+              }
 
          if(lokstatus & (1<<LOK_CHANGEBIT)) // Motor-Pins tauschen
          {

@@ -24,4 +24,6 @@
 	uint8_t i2c_readNak(void);
 	void i2c_stop (void);
 
+
+
 #endif /* I2C_H_ */

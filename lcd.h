@@ -31,16 +31,33 @@
 	#define LCD_D6			(1<<6)
 	#define LCD_D7			(1<<7)
 
-	#define LCD_WIDTH 16
-	#define LCD_ADDR_LINE1	(0x80)
-	#define LCD_ADDR_LINE2	(0xC0)
+	#define LCD_WIDTH 20
+	#define LCD_ADDR_LINE1	(0x80) // 128
+	#define LCD_ADDR_LINE2	(0xC0) // 192
+#define LCD_START_LINE1  0x00     /**< DDRAM address of first char of line 1 */
+#define LCD_START_LINE2  0x40     /**< DDRAM address of first char of line 2 */
+
+#define LCD_START_LINE3  0x14     /**< DDRAM address of first char of line 3 */
+#define LCD_START_LINE4  0x54     /**< DDRAM address of first char of line 4 */
+#define LCD_CGRAM             6      /* DB6: set CG RAM address             */
+#define LCD_DDRAM             7      /* DB7: set DD RAM address             */
+
 
 	void lcd_init(void);
 	void lcd_clear(void);
 	void lcd_home(void);
-	void lcd_print_str (char *str);
+	void lcd_puts (char *str);
 	void lcd_write_P (const char *Buffer,...);
-
+void lcd_putc(char c);
+   void lcd_gotoxy(uint8_t x, uint8_t y);
+void lcd_putint16(uint16_t zahl);
+void lcd_putint12(uint16_t zahl);
+void lcd_putint2(uint8_t zahl) ;
+void lcd_putint1(uint8_t zahl);
+void lcd_putint(uint8_t zahl);
+void lcd_clr_line(uint8_t Linie);
+void lcd_write_char (char c) ;
+void lcd_puts(char *str) ;
 	#define lcd_write(format, args...)   lcd_write_P(PSTR(format) , ## args)
 
 #endif

@@ -14,6 +14,12 @@
 #define OSZIPORT   PORTD      // Ausgang fuer Servo
 #define OSZIDDR   DDRD
 
+#define LCD_PORT                PORTB
+#define LCD_DDR                DDRB
+
+#define LCD_RSDS_PIN            5
+#define LCD_ENABLE_PIN          6
+#define LCD_CLOCK_PIN           7
 
 
 #define OSZIA 6            // 
