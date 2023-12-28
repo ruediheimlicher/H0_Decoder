@@ -12,25 +12,29 @@
 #define LONG 2 // Abstand zwischen Daten
 
 #define OSZIPORT   PORTD      // Ausgang fuer Servo
-#define OSZIDDR   DDRD
+#define OSZIDDR      DDRD
 
 
 
-#define OSZIA 6            // 
-#define OSZIB 7            // Impuls für Servo
-
-#define INT_0   4
+#define INT_0     4
 
 #define PAKETA   0
 #define PAKETB   1
 
-#define OSZIALO OSZIPORT &= ~(1<<OSZIA)
-#define OSZIAHI OSZIPORT |= (1<<OSZIA)
-#define OSZIATOG OSZIPORT ^= (1<<OSZIA)
+#define OSZI_PULS_A        6
+#define OSZI_PULS_B        7
 
-#define OSZIBLO OSZIPORT &= ~(1<<OSZIB)
-#define OSZIBHI OSZIPORT |= (1<<OSZIB)
-#define OSZIBTOG OSZIPORT ^= (1<<OSZIB)
+
+#define OSZI_A_LO() OSZIPORT &= ~(1<<OSZI_PULS_A)
+#define OSZI_A_HI() OSZIPORT |= (1<<OSZI_PULS_A)
+#define OSZI_A_TOGG()  OSZIPORT ^= (1<<OSZI_PULS_A)
+
+
+#define OSZI_B_LO() OSZIPORT &= ~(1<<OSZI_PULS_B)
+#define OSZI_B_HI() OSZIPORT |= (1<<OSZI_PULS_B)
+#define OSZI_B_TOGG() OSZIPORT ^= (1<<OSZI_PULS_B)
+
+
 
 #define TESTPORT        PORTB
 #define TESTDDR        DDRB
@@ -40,9 +44,9 @@
 
 
 
-#define STATUSPORT   PORTC
-#define STATUSDDR    DDRC
-#define STATUSPIN    PINC
+#define I2CPORT   PORTC
+#define I2CDDR    DDRC
+
 
 // Pins
 #define FUNKTIONOK   2
@@ -53,9 +57,8 @@
 #define MOTORDDR    DDRB
 #define MOTORPIN    PINB
 
-#define MOTORA      2
-#define MOTORB      3
-#define MOTORDIR 1
+#define MOTORA_PIN      2
+#define MOTORB_PIN      3
 
 // lokstatus-Bits
 #define FUNKTION     0
@@ -64,11 +67,21 @@
 
 
 
+
 #define ADDRESSBIT   0
+#define STARTBIT        1 // Startimpuls
 #define DATABIT      2
+#define PROGBIT         3 // Programmiermodus
 #define FUNKTIONBIT  4
-#define OLDRICHTUNGBIT  5
+#define RUNBIT  5
 #define RICHTUNGBIT  6
+#define LOK_CHANGEBIT       7  
+
+
+#define STARTDELAY      100
+
+#define STARTWAIT 100
+
 
 #define TRIT0 0
 #define TRIT1 1
@@ -91,9 +104,17 @@
 #define LAMPEDDR  DDRD
 #define LAMPEPIN   PIND
 
+#define LED_CHANGEBIT       7  
+#define LAMPEA_PIN      1 
+#define LAMPEB_PIN      0
+
+
 #define LAMPE         3
 #define MEM           6 // Eingang fuer last richtung (Kondensator)
 
+#define LAMPEMAX 0x40 // 50%
+
+#define FIRSTRUN_END 80
 
 
 
