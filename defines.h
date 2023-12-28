@@ -116,6 +116,9 @@
 
 #define FIRSTRUN_END 80
 
+#define FIRSTRUN_END 80
 
+#define MAXLOOP0 0x0AFE
+#define MAXLOOP1 0x0AFF
 
 #endif /* defines_h */

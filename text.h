@@ -10,7 +10,7 @@
 #define DOG_LCD_text_h
 
 // Homescreen
-const char titel0[] PROGMEM = "AVR_Starter\0";
+const char titel0[] PROGMEM = "H0_Decoder328\0";
 const char titel1[] PROGMEM = "ON-Zeit:\0";
 const char titel2[] PROGMEM = "Stoppuhr\0";
 const char titel3[] PROGMEM = "Motorzeit\0";

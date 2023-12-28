@@ -234,19 +234,23 @@ void setlogscreen(void)
 
    char_x=RANDLINKS;
    char_y = 2;
-   display_write_str("Zeile 2",2);
+   display_write_str("Zeile 2",1);
    char_height_mul = 1;
    char_width_mul = 1;
    //display_go_to(0,4);
    char_x = 8;
    char_y = 5;
    display_write_int(char_x,1);
+   display_write_str(" ",1);
    display_write_str("++Zeile 3++",1);
+   display_write_str(" ",1);
    display_write_int(char_x,1);
    char_x += 2;
-   display_write_int(char_x,2);
+   display_write_str(" ",1);
+   display_write_int(char_x,1);
+   display_write_str(" ",1);
    display_write_spannung(124,1);
-   
+  
 }
 
 void sethomescreen(void)

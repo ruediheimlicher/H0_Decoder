@@ -18,9 +18,10 @@
 #include <avr/wdt.h>
 #include "defines.h"
 #include <stdint.h>
+#include <util/twi.h>
 
+#include "lcd.c"
 
-#include "lcd_a.c"
 
 #include "display.c"
 
@@ -28,7 +29,12 @@
 
 
 
+
+
+
 #include "adc.c"
+#define TW_STATUS   (TWSR & TW_STATUS_MASK)
+
 
 
 //***********************************
@@ -218,6 +224,26 @@ volatile uint8_t speedindex = 7;
 
 volatile uint8_t   maxspeed =  252;//prov.
 
+uint16_t loopcounter0;
+uint16_t loopcounter1;
+
+
+
+extern void TWI_start(void);
+
+
+
+void spi_init(void) // SPI-Pins aktivieren
+{
+   // https://embedds.com/serial-peripheral-interface-in-avr-microcontrollers/
+   //set MOSI, SCK and SS as output
+   DDRB |= (1<<PB3)|(1<<PB5)|(1<<PB2);
+   //set SS to high
+   PORTB |= (1<<PB2);
+   //enable master SPI at clock rate Fck/16
+   SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);
+}
+
 
 void slaveinit(void)
 {
@@ -242,12 +268,12 @@ void slaveinit(void)
 	LOOPLEDPORT |=(1<<LOOPLED);
    LOOPLEDDDR |=(1<<LOOPLED);
 	
-
+/*
 	//LCD
 	LCD_DDR |= (1<<LCD_RSDS_PIN);	//Pin 5 von PORT B als Ausgang fuer LCD
  	LCD_DDR |= (1<<LCD_ENABLE_PIN);	//Pin 6 von PORT B als Ausgang fuer LCD
 	LCD_DDR |= (1<<LCD_CLOCK_PIN);	//Pin 7 von PORT B als Ausgang fuer LCD
-
+*/
    
    TESTDDR |= (1<<TEST0); // test0
    TESTPORT |= (1<<TEST0); // HI
@@ -270,13 +296,19 @@ void slaveinit(void)
 
    initADC(MEM);
    
+   /*
    // TWI
    DDRC |= (1<<5);   //Pin 0 von PORT C als Ausgang (SCL)
    PORTC |= (1<<5);   //   ON
    DDRC |= (1<<4);   //Pin 1 von PORT C als Ausgang (SDA)
    PORTC |= (1<<4);   //   ON
+*/
+   spi_init();
+   _delay_ms(5);
+   display_init();
 
-  
+   
+   
    
 }
 
@@ -722,20 +754,20 @@ void main (void)
    
 	slaveinit();
    
-   int0_init();
+//   int0_init();
 	
 	/* initialize the LCD */
 	lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
 
 	lcd_puts("Guten Tag\0");
-	_delay_ms(1000);
+	_delay_ms(100);
 	lcd_cls();
 	lcd_puts("H0-Decoder A328");
 	
    
 	//timer0();
    
-   timer2(4);
+//   timer2(4);
 	
 	//initADC(TASTATURPIN);
 	
@@ -764,14 +796,23 @@ void main (void)
    
    //lcd_gotoxy(0,3);
    //lcd_puts("data ");
-  
-
+   
+   
+ //  TWI_Init();
+   _delay_ms(100);
+ //  LCD_Init();
+   uint8_t counter = 0;
+   uint8_t byte = 0;
+   uint8_t lcdcounter = 0;
+   
+   setlogscreen();
 	while (1)
    {   
       // Timing: loop: 40 us, takt 85us, mit if-teil 160 us
       wdt_reset();
       {
          //PORTA &= ~(1<<PA4); // LED on
+
          
          
          if(lokstatus & (1<<FUNKTIONBIT))
@@ -791,11 +832,30 @@ void main (void)
             */
          }
 
+         if(lokstatus & (1<<FUNKTIONBIT))
+         {
+            /*
+             if(dimmcounter == 3)
+             {
+             LAMPEPORT |= (1<<ledonpin); // Lampe-PWM  ON
+             
+             }
+             dimmcounter++;
+             if(dimmcounter > 32)
+             {
+             LAMPEPORT &= ~(1<<ledonpin); // Lampe-PWM  OFF
+             dimmcounter = 0;
+             }
+             */
+         }
+         
+         //continue;
          
          loopcount1++;
          if (loopcount1 >= speedchangetakt)
          {
-            
+             
+            lcdcounter++;
             //LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
             loopcount1 = 0;
             //OSZIATOG;
@@ -841,10 +901,27 @@ void main (void)
       if (loopcount0>=refreshtakt)
       {
          //OSZIATOG;
-         LOOPLEDPORT ^= (1<<LOOPLED); 
+         //LOOPLEDPORT ^= (1<<LOOPLED); 
          
          loopcount0=0;
          
+         //LOOPLEDPORT ^= (1<<LOOPLED); 
+         
+         loopcount0=0;
+         loopcounter1++;
+             if (loopcounter1 > MAXLOOP1)
+             {
+                loopcounter1=0;
+                LOOPLEDPORT ^= (1<<LOOPLED);
+                counter++;
+                 
+ 
+                lcdcounter++;
+
+                //lcd_gotoxy(16,1);
+                //lcd_putint(counter);
+             }
+
          if(lokstatus & (1<<LOK_CHANGEBIT)) // Motor-Pins tauschen
          {
             if(pwmpin == MOTORA_PIN)
@@ -894,9 +971,6 @@ void main (void)
             lokstatus &= ~(1<<LOK_CHANGEBIT);
             
          } // if changebit
-         
-         
-         
          // Lampen einstellen
          if(ledstatus & (1<<LED_CHANGEBIT))
          {
@@ -914,7 +988,6 @@ void main (void)
             }
             ledstatus &= ~(1<<LED_CHANGEBIT);
          }
-
          
          
          

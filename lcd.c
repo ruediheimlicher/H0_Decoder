@@ -40,19 +40,18 @@
         lcd_putc('i');
         lcd_putc('c');
         lcd_putc('k');
-        
         return (0);
 
     ****************************************************************************
 */
 
-#include "lcd_a.h"
+#include "lcd.h"
 #include <inttypes.h>
 #include <avr/io.h>
-#include <util/delay.h>
 #include <stdlib.h>
+#include <util/delay.h>
 
-extern char* wochentag[];
+//extern char* wochentag[];
 /*
  * Turns the backlight on or off.  The LCD_BACKLIGHT_PIN should be defined as
  * the pin connected to the backlight control of the LCD.
@@ -172,7 +171,9 @@ lcd_load_byte(uint8_t out_byte)
                 out_byte = out_byte << 1;
                 
                 /* pulse the the shift register clock */
-                LCD_PORT |= _BV(LCD_CLOCK_PIN);		//Clk des Schieberegisters
+                LCD_PORT |= _BV(LCD_CLOCK_PIN);	
+				_delay_us(40);
+				//Clk des Schieberegisters
                 LCD_PORT &= ~_BV(LCD_CLOCK_PIN);
         }
 }
@@ -187,7 +188,7 @@ lcd_send_cmd(void)
         /* Data in '164 is a command, so RS must be low (0) */
         LCD_PORT &= ~_BV(LCD_RSDS_PIN); 
         lcd_strobe_E();	
-        _delay_us(60);
+        _delay_us(50);
 }
 
 /*
@@ -200,7 +201,7 @@ lcd_send_char(void)
         /* Data in '164 is a character, so RS must be high (1) */
         LCD_PORT |= _BV(LCD_RSDS_PIN); 
         lcd_strobe_E();
-        _delay_us(60);
+        _delay_us(50);
 }
 
 /*
@@ -230,6 +231,21 @@ char string[4];
 lcd_puts(string);
 }
 
+void lcd_putint16(uint16_t zahl)
+{
+char string[6];
+  int8_t i;                             // schleifenzŠhler
+ 
+  string[5]='\0';                       // String Terminator
+  for(i=4; i>=0; i--)
+  {
+    string[i]=(zahl % 10) +'0';         // Modulo rechnen, dann den ASCII-Code von '0' addieren
+    zahl /= 10;
+  }
+lcd_puts(string);
+}
+
+
 
 
 void lcd_putint2(uint8_t zahl)	//zweistellige Zahl
@@ -256,34 +272,6 @@ void lcd_putint1(uint8_t zahl)	//einstellige Zahl
 	lcd_puts(string);
 }
 
-void lcd_putint12(uint16_t zahl)
-{
-   char string[5];
-   int8_t i;                             // schleifenzŠhler
-   
-   string[4]='\0';                       // String Terminator
-   for(i=3; i>=0; i--)
-   {
-      string[i]=(zahl % 10) +'0';         // Modulo rechnen, dann den ASCII-Code von '0' addieren
-      zahl /= 10;
-   }
-   lcd_puts(string);
-}
-
-
-void lcd_putint16(uint16_t zahl)
-{
-char string[8];
-  int8_t i;                             // schleifenzŠhler
- 
-  string[7]='\0';                       // String Terminator
-  for(i=6; i>=0; i--) 
-  {
-    string[i]=(zahl % 10) +'0';         // Modulo rechnen, dann den ASCII-Code von '0' addieren
-    zahl /= 10;
-  }
-lcd_puts(string);
-}
 
 
 /*************************************************************************
@@ -312,7 +300,7 @@ lcd_strobe_E(void)
 {
         /* strobe E signal */
         LCD_PORT |= _BV(LCD_ENABLE_PIN);
-        _delay_us(550); 
+        _delay_us(450); 
 	//	lcddelay_ms(100);
         LCD_PORT &= ~_BV(LCD_ENABLE_PIN);
 }
@@ -379,27 +367,19 @@ Returns:  none
 *************************************************************************/
 void lcd_gotoxy(uint8_t x, uint8_t y)
 {
-   switch (y)
-   {
-      case 0:
-         lcd_load_byte((1<<LCD_DDRAM)+LCD_START_LINE1+x);
-         lcd_send_cmd();
-         break;
-      case 1:
-         lcd_load_byte((1<<LCD_DDRAM)+LCD_START_LINE2+x);
-         lcd_send_cmd();
-         break;
-      case 2:
-         lcd_load_byte((1<<LCD_DDRAM)+LCD_START_LINE3+x);
-         lcd_send_cmd();
-         break;
-      case 3:
-         lcd_load_byte((1<<LCD_DDRAM)+LCD_START_LINE4+x);
-         lcd_send_cmd();
-         break;
-         
-         
-   }//switch
+    if ( y==0 ) 
+		{
+		
+        lcd_load_byte((1<<LCD_DDRAM)+LCD_START_LINE1+x);
+		lcd_send_cmd();
+		}
+    else
+	{
+       
+		lcd_load_byte((1<<LCD_DDRAM)+LCD_START_LINE2+x);
+		lcd_send_cmd();
+
+		}
 
 }/* lcd_gotoxy */
 
@@ -408,14 +388,12 @@ void lcd_cls(void)
 {
 	lcd_load_byte(0x01);
 	lcd_send_cmd();
-//	lcd_write(0x02,0);   	// B 0000 0010 => Display loeschen
-	lcddelay_ms(3);			// dauert eine Weile, Wert ausprobiert
 
 //	lcd_write(0x01,0);   	// B 0000 0001 => Cursor Home
 	lcd_load_byte(0x02);
 	lcd_send_cmd();
 	
-	lcddelay_ms(3);			// dauert eine Weile, Wert ausprobiert
+	lcddelay_ms(2);			// dauert eine Weile, Wert ausprobiert
 }
 
 
@@ -429,7 +407,7 @@ void lcd_clr_line(uint8_t Linie)
 		lcd_putc(' ');
 	}
 	lcd_gotoxy(0,Linie);
-	
+	lcddelay_ms(2);
 }	// Linie Loeschen
 
 
@@ -627,12 +605,14 @@ void lcd_put_wochentag(uint8_t wd)
 void lcd_put_temperatur(uint16_t temperatur)
 {
 		char buffer[8]={};
-		uint16_t temp=(temperatur-127)*5;
+		//uint16_t temp=(temperatur-127)*5;
+		uint16_t temp=temperatur*5;
 //		uint16_t temp=temperatur;
-		
+		lcd_gotoxy(0,1);
+		lcd_putint16(temp);
+
 //		itoa(temp, buffer,10);
 		r_itoa16(temp,buffer);
-		lcd_puts(buffer);
 //		lcd_putc(' * ');
 		
 		char outstring[8]={};
@@ -679,8 +659,15 @@ void lcd_put_temperatur(uint16_t temperatur)
 void lcd_put_tempbis99(uint16_t temperatur)
 {
 		char buffer[7]={};
-//		uint16_t temp=(temperatur-127)*5;
-		uint16_t temp=temperatur*5;
+		//uint16_t temp=(temperatur-127)*5;
+		//lcd_gotoxy(0,1);
+		//lcd_puts("t:\0");
+		//lcd_putint((uint8_t) temperatur);	
+		uint16_t temp=(temperatur)*5;
+		lcd_puts("T:\0");
+		lcd_putint16(temp);	
+
+//		uint16_t temp=temperatur;
 		
 //		itoa(temp, buffer,10);
 		r_itoa16(temp,buffer);
@@ -716,7 +703,7 @@ void lcd_put_tempbis99(uint16_t temperatur)
 		}
 	*/	
 		lcd_puts(outstring);
-
+		lcddelay_ms(2);
 }
 
 /*************************************************************************/
