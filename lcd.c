@@ -520,8 +520,6 @@ uint8_t frac  : Anzahl der Nachkommastellen
 	h%=10;
 	string[0]=h + 'A'; 
 	}
-	
-	
 	lcd_puts(string);
 }
 

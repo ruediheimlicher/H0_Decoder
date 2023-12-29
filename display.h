@@ -197,8 +197,8 @@ uint8_t display_kanaldiagramm (uint8_t char_x, uint8_t char_y, uint8_t level, ui
 uint8_t display_kanaldiagramm_var(uint8_t char_x0, uint8_t char_y0, uint8_t level, uint8_t expo, uint8_t typ );
 void display_cursorweg(void);
 
-
-
+void display_write_hex(uint8_t zahl, uint8_t prop); // von lcd_puthex
+void display_write_sec_min(uint16_t zeit, uint8_t prop);
 
 
 	#define display_write(format, args...)   display_write_P(PSTR(format) , ## args)

@@ -22,7 +22,7 @@
 #include "text.h"
 #include "defines.h"
 
-
+extern uint8_t LOK_ADRESSE;
 
 extern volatile uint8_t levelwert;
 extern volatile uint8_t levelb;
@@ -234,12 +234,18 @@ void setlogscreen(void)
 
    char_x=RANDLINKS;
    char_y = 2;
-   display_write_str("Zeile 2",1);
+   display_write_str("Lok-Adresse",1);
    char_height_mul = 1;
    char_width_mul = 1;
    //display_go_to(0,4);
-   char_x = 8;
-   char_y = 5;
+   char_x = 64;
+   char_y = 2;
+   display_write_int(LOK_ADRESSE,1);
+   display_write_str(" ",1);
+   display_write_hex(LOK_ADRESSE,1);
+   /*
+   char_x = 0;
+   char_y = 3;
    display_write_int(char_x,1);
    display_write_str(" ",1);
    display_write_str("++Zeile 3++",1);
@@ -250,7 +256,7 @@ void setlogscreen(void)
    display_write_int(char_x,1);
    display_write_str(" ",1);
    display_write_spannung(124,1);
-  
+  */
 }
 
 void sethomescreen(void)
@@ -1485,7 +1491,7 @@ void display_write_propchar(unsigned char c, uint8_t prop)
    {
       case 1:
       {
-         pointer = propfont6[c-32];
+         pointer = propfont6[c-32]; // 32 ist start in ascii
          //charsize = 6;
       }break;
          
@@ -1498,7 +1504,7 @@ void display_write_propchar(unsigned char c, uint8_t prop)
           pointer = propfont6[c-32];
       }
    }
-	uint8_t  charbreite =   pgm_read_byte(pointer++);
+	uint8_t  charbreite =   pgm_read_byte(pointer++); // erste Zahl ist breite
    
 	
 	for(col=(char_x+DISPLAY_OFFSET);col<(char_x+(charbreite*char_width_mul)+DISPLAY_OFFSET);col=col+char_width_mul)
@@ -1865,6 +1871,8 @@ void display_write_str(char *str, uint8_t prop)
 	}
 }
 
+
+
 void display_write_inv_str(char *str,uint8_t prop)
 {
    display_go_to(char_y,char_x);
@@ -1935,6 +1943,90 @@ void display_write_dez(uint16_t zahl, uint8_t stellen, uint8_t prop)
       i++;
    }
 }
+//##############################################################################################
+void display_write_hex(uint8_t zahl, uint8_t prop) // von lcd_puthex
+{
+   char string[3];
+   uint8_t i,l,h;     
+   string[2]='\0';                       // String Terminator
+   l=(zahl % 16);
+   if (l<10)
+   string[1]=l +'0';  
+   else
+   {
+   l%=10;
+   string[1]=l + 'A'; 
+   
+   }
+   zahl /=16;
+   h= zahl % 16;
+   if (h<10)
+   string[0]=h +'0';  
+   else
+   {
+   h%=10;
+   string[0]=h + 'A'; 
+   }
+
+   display_write_str(string,prop);
+   
+}
+//##############################################################################################
+void display_write_sec_min(uint16_t zeit, uint8_t prop)
+{
+   
+   char zeitString[6];
+   zeitString[5]='\0';
+
+   uint8_t sekunden = zeit%60;
+   
+   
+   //   sekunden einsetzen
+   zeitString[4]=(sekunden % 10) +'0';   //hinterste Stelle
+   if (sekunden>9)
+   {
+      sekunden/=10;
+      zeitString[3]=(sekunden % 10) +'0';
+   }
+   else
+   {
+      zeitString[3]='0';
+   }
+    
+   zeitString[2]=':';
+   
+   uint16_t minuten = zeit/60;
+   //   Stunden einsetzen
+   zeitString[1]=(minuten % 10) +'0'; 
+   if (minuten>9)
+   {      
+      minuten/=10;
+      zeitString[0]=(minuten % 10) +'0';
+   }
+   else
+   {
+      zeitString[0]='0';
+   }
+
+   
+   
+   
+   
+   display_write_str(zeitString,prop);
+   
+   
+}
+//##############################################################################################
+
+
+
+
+
+
+
+
+
+
 
 
 //##############################################################################################

@@ -43,9 +43,13 @@
 #define TEST1     1
 
 
+// Bits displaydata
+#define SPEEDCODE 0
+#define SPEED     1
 
-#define I2CPORT   PORTC
-#define I2CDDR    DDRC
+// bits displaystatus
+#define DISPLAY_GO   7
+
 
 
 // Pins
@@ -53,9 +57,9 @@
 #define ADDRESSOK    3
 #define DATAOK       4
 
-#define MOTORPORT   PORTB
-#define MOTORDDR    DDRB
-#define MOTORPIN    PINB
+#define MOTORPORT   PORTC
+#define MOTORDDR    DDRC
+#define MOTORPIN    PINC
 
 #define MOTORA_PIN      2
 #define MOTORB_PIN      3
@@ -100,9 +104,9 @@
 #define INT0_PAKET_B 5
 
 
-#define LAMPEPORT PORTD
-#define LAMPEDDR  DDRD
-#define LAMPEPIN   PIND
+#define LAMPEPORT PORTC
+#define LAMPEDDR  DDRC
+#define LAMPEPIN   PINC
 
 #define LED_CHANGEBIT       7  
 #define LAMPEA_PIN      1 

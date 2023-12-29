@@ -96,6 +96,15 @@ volatile uint16_t                posregister[8][8]={}; // Aktueller screen: wert
 volatile uint16_t                cursorpos[8][8]={}; // Aktueller screen: werte fuer page und darauf liegende col fuer den cursor
 volatile uint16_t                 blink_cursorpos=0xFFFF;
 
+volatile uint8_t                 displaystatus = 0; // bits for sending display data
+                                          // 0-3: sendposition
+                                          // 4,5,6: 
+                                          // 7: aktivbit
+
+
+volatile uint8_t                 displaydata[8]  = {};
+
+
 
 uint16_t spicounter=0;
 
@@ -164,11 +173,6 @@ volatile uint8_t   richtungcounter = 0; // delay fuer Richtungsimpuls
 volatile uint8_t     pwmpin = MOTORA_PIN;           // Motor PWM
 volatile uint8_t     richtungpin = MOTORB_PIN;      // Motor Richtung
 
-volatile uint8_t	Potwert=45;
-			//	Zaehler fuer richtige Impulsdauer
-//uint8_t				Servoposition[]={23,33,42,50,60};
-// Richtung invertiert
-//volatile uint8_t				Servoposition[]={60,50,42,33,23};
 
 volatile uint16_t	taktimpuls=0;
 
@@ -240,8 +244,9 @@ void spi_init(void) // SPI-Pins aktivieren
    DDRB |= (1<<PB3)|(1<<PB5)|(1<<PB2);
    //set SS to high
    PORTB |= (1<<PB2);
-   //enable master SPI at clock rate Fck/16
-   SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);
+   //enable master SPI at clock rate Fck/2
+   SPCR = (1<<SPE)|(1<<MSTR);//|(1<<SPR0);
+   SPSR |= (1<<SPI2X);
 }
 
 
@@ -347,16 +352,19 @@ void timer2 (uint8_t wert)
 #pragma mark INT0
 ISR(INT0_vect) 
 {
-   OSZI_A_TOGG();
+   //OSZI_A_TOGG();
    if (INT0status == 0) // neue Daten beginnen
    {
+      displaystatus &= ~(1<<DISPLAY_GO); // keine Daten mehr an display
+      OSZI_A_HI();
+      
       INT0status |= (1<<INT0_START);
       INT0status |= (1<<INT0_WAIT); // delay, um Wert des Eingangs zum richtigen Zeitpunkt zu messen
       
       INT0status |= (1<<INT0_PAKET_A); // erstes Paket lesen
       OSZIPORT &= ~(1<<PAKETA); 
       //TESTPORT &= ~(1<<TEST2);
-      OSZI_A_LO(); 
+     // OSZI_A_LO(); 
       
       
   //    OSZIPORT &= ~(1<<INT_0);
@@ -391,7 +399,7 @@ ISR(INT0_vect)
       pausecounter = 0;
       abstandcounter = 0; 
       waitcounter = 0;
-      OSZI_A_LO();
+    //  OSZI_A_LO();
       //   INT0status |= (1<<INT0_RISING); // wait for next rise
       //    MCUCR = (1<<ISC00) |(1<<ISC01); // raise int0 on rising edge
    }
@@ -542,7 +550,9 @@ ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
             else if (INT0status & (1<<INT0_PAKET_B)) // zweites Paket, Werte testen
             {
                
-               
+   // MARK: display go           
+               displaystatus |= (1<<DISPLAY_GO); // senden an display ok
+               OSZI_A_LO();
    // MARK:  EQUAL
                if (lokadresseA && ((rawfunktionA == rawfunktionB) && (rawdataA == rawdataB) && (lokadresseA == lokadresseB))) // Lokadresse > 0 und Lokadresse und Data OK
                {
@@ -652,6 +662,7 @@ ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
                               break;
                               
                         }
+                        displaydata[SPEEDCODE] = speedcode;
                         //speed = speedlookup[speedcode];
                         if(speedcode && (speedcode < 2) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
                         {
@@ -706,6 +717,10 @@ ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
                {
                   //               TESTPORT |= (1<<TEST2);
                }
+               
+              
+               
+               
             } // End Paket B
          }
          
@@ -748,7 +763,7 @@ ISR(TIMER2_COMPA_vect) // Schaltet Impuls an SERVOPIN0 aus
 
 
 
-void main (void) 
+int main (void) 
 {
    
    
@@ -757,12 +772,12 @@ void main (void)
 //   int0_init();
 	
 	/* initialize the LCD */
-	lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
+	//lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
 
-	lcd_puts("Guten Tag\0");
-	_delay_ms(100);
-	lcd_cls();
-	lcd_puts("H0-Decoder A328");
+	//lcd_puts("Guten Tag\0");
+	_delay_ms(2000);
+	//lcd_cls();
+	//lcd_puts("H0-Decoder A328");
 	
    
 	//timer0();
@@ -777,20 +792,20 @@ void main (void)
    uint8_t loopcount1=0;
 
 	
-	_delay_ms(800);
+	_delay_ms(1800);
 
    
    oldfunktion = 0x03; // 0x02
    oldlokdata = 0xCE;
 
    sei();
-
+/*
    lcd_gotoxy(0,1);
    lcd_puts("ADR ");
    lcd_puthex(LOK_ADRESSE);
-   
+*/   
    //lcd_gotoxy(0,2);
-   lcd_puts(" adrIN");
+   //lcd_puts(" adrIN");
 
    //lcd_gotoxy(0,2);
    
@@ -800,10 +815,9 @@ void main (void)
    
  //  TWI_Init();
    _delay_ms(100);
- //  LCD_Init();
    uint8_t counter = 0;
    uint8_t byte = 0;
-   uint8_t lcdcounter = 0;
+   uint16_t lcdcounter = 0;
    
    setlogscreen();
 	while (1)
@@ -878,6 +892,7 @@ void main (void)
                {
                   speed = newspeed;
                }
+               
             }
             else if((newspeed < oldspeed)) // bremsen, speedintervall negativ
             {
@@ -890,6 +905,7 @@ void main (void)
                   speed = newspeed;
                }
             }
+            displaydata[SPEED] = speed;
             // end speed var
             
          } // loopcount1 >= speedchangetakt
@@ -914,12 +930,22 @@ void main (void)
                 loopcounter1=0;
                 LOOPLEDPORT ^= (1<<LOOPLED);
                 counter++;
-                 
- 
+                OSZI_B_LO();
+                char_x=100;
+                char_y = 1;
+                //display_write_int(lcdcounter,1);
+                display_write_sec_min(lcdcounter,1);
+                OSZI_B_HI();
                 lcdcounter++;
-
-                //lcd_gotoxy(16,1);
-                //lcd_putint(counter);
+                
+                
+/*
+                char_x=80;
+                char_y = 4;
+                display_write_sec_min(lcdcounter, 1);
+*/      
+//                lcd_gotoxy(16,1);
+//                lcd_putint(lcdcounter);
              }
 
          if(lokstatus & (1<<LOK_CHANGEBIT)) // Motor-Pins tauschen
@@ -1008,5 +1034,5 @@ void main (void)
    }//while
 
 
-// return 0;
+ return 0;
 }
