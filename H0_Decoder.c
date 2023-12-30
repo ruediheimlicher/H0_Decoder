@@ -217,7 +217,7 @@ volatile uint8_t loktyptable[4];
 volatile uint8_t speedindex = 7;
 
 volatile uint8_t   maxspeed =  252;//prov.
-
+volatile uint8_t   minspeed =  0;
 uint16_t displaycounter0;
 uint16_t displaycounter1;
 
@@ -299,8 +299,14 @@ void slaveinit(void)
    ledonpin = LAMPEA_PIN;
    ledoffpin = LAMPEB_PIN;
 
-   maxspeed =  speedlookuptable[speedindex][14];
-   
+   uint8_t i = 0;
+   for (i=0;i<15;i++)
+   {
+      speedlookup[i] = speedlookuptable[speedindex][i];
+   }
+
+   maxspeed = speedlookup[14];
+   minspeed = speedlookup[0];
    /*
    // TWI
    DDRC |= (1<<5);   //Pin 0 von PORT C als Ausgang (SCL)
@@ -705,14 +711,16 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                                  
                            }
                            //speed = speedlookup[speedcode];
+                            newspeed = speedlookup[speedcode]; // zielwert
                             
-                            if(speedcode && (speedcode < 2) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
+                            if(speedcode && (speedcode ==1) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
                             {
-                                 startspeed = speedlookup[speedcode] + 1; // kleine Zugabe
+                                 startspeed = speedlookup[speedcode] + STARTIMPULS; // kleine Zugabe
                                
                                lokstatus |= (1<<STARTBIT);
                             }
                             //OSZI_B_LO();
+                            
                            oldspeed = speed; // behalten
                         
                            speedintervall = (newspeed - speed)>>2; // 4 teile
@@ -721,7 +729,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                                speedintervall = 1;
                             }
                            
-                            newspeed = speedlookup[speedcode]; // zielwert
+                           // newspeed = speedlookup[speedcode]; // zielwert
                            
                             
                             if(speedcode > 0)
@@ -860,12 +868,7 @@ int main (void)
    uint8_t byte = 0;
    uint16_t lcdcounter = 0;
    
-   uint8_t i = 0;
-   for (i=0;i<15;i++)
-   {
-      speedlookup[i] = speedlookuptable[speedindex][i];
-   }
-
+  
    
    if (DISPLAY)
    {
@@ -953,6 +956,8 @@ int main (void)
             //OSZIATOG;
             
             //OSZI_B_LO();
+            
+            // MARK: speed var
             // speed var
             if((newspeed > oldspeed)) // beschleunigen, speedintervall positiv
             {
@@ -961,11 +966,15 @@ int main (void)
                {
                   if((startspeed > speed) && (lokstatus & (1<<STARTBIT))) // Startimpuls
                   {
+                     
                      speed = startspeed;
+                     
                      lokstatus &= ~(1<<STARTBIT);
                   }
-                  
-                  speed += speedintervall;
+                  else 
+                  {
+                     speed += speedintervall;
+                  }
                }
                else 
                {
@@ -974,10 +983,14 @@ int main (void)
                //OSZI_B_HI();
                
             }
-            else if((newspeed <= oldspeed)) // bremsen, speedintervall negativ
+            else if((newspeed < oldspeed)) // bremsen, speedintervall negativ
             {
                //OSZI_B_LO();
-               if((speed > newspeed) && ((speed + 2*speedintervall) > 0))
+               
+               
+               if((speed > newspeed) && ((speed + 2*speedintervall) > (minspeed + 2*speedintervall)))
+               
+               
                {
                   speed += 2*speedintervall;
                }

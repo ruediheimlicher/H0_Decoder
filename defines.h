@@ -51,6 +51,8 @@
 #define SPEEDCODE 0
 #define SPEED     1
 
+#define STARTIMPULS 2
+
 // bits displaystatus
 #define DISPLAY_GO   7
 
