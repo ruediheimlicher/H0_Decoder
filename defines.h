@@ -23,16 +23,20 @@
 
 #define OSZI_PULS_A        6
 #define OSZI_PULS_B        7
-
+#define SYNC               4
 
 #define OSZI_A_LO() OSZIPORT &= ~(1<<OSZI_PULS_A)
 #define OSZI_A_HI() OSZIPORT |= (1<<OSZI_PULS_A)
 #define OSZI_A_TOGG()  OSZIPORT ^= (1<<OSZI_PULS_A)
 
+#define SYNC_LO() OSZIPORT &= ~(1<<SYNC)
+
 
 #define OSZI_B_LO() OSZIPORT &= ~(1<<OSZI_PULS_B)
 #define OSZI_B_HI() OSZIPORT |= (1<<OSZI_PULS_B)
 #define OSZI_B_TOGG() OSZIPORT ^= (1<<OSZI_PULS_B)
+
+#define SYNC_HI() OSZIPORT |= (1<<SYNC)
 
 
 
@@ -69,7 +73,7 @@
 #define OLDFUNKTION  1
 #define FUNKTIONSTATUS 2
 
-
+#define LEDPWM          50
 
 
 #define ADDRESSBIT   0

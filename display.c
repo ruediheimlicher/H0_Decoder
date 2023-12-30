@@ -1157,7 +1157,7 @@ uint8_t display_write_byte(unsigned cmd_data, unsigned char data)
       SPI_A0_LO();
       //DOG_SPI_PORT &= ~(1<<DOG_SPI_A0);
 	}
-   OSZI_B_LO(); 
+   //OSZI_B_LO(); 
    spicounter = MAX_SPI_COUNT;
 	SPDR = data;
 	while((!(SPSR & (1<<SPIF))) && spicounter)
@@ -1165,7 +1165,7 @@ uint8_t display_write_byte(unsigned cmd_data, unsigned char data)
       //OSZI_A_TOGG();
       spicounter--;
    }
-   OSZI_B_HI(); 
+   //OSZI_B_HI(); 
    _delay_us(1);
    SPI_CS_HI();
    
