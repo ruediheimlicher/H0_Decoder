@@ -148,7 +148,6 @@ volatile uint8_t   deflokdata = 0;
 
 volatile uint8_t   rawdataA = 0;
 volatile uint8_t   rawdataB = 0;
-//volatile uint32_t   oldrawdata = 0;
 
 // ***
 volatile uint8_t   rawfunktionA = 0;
@@ -221,6 +220,9 @@ volatile uint8_t   maxspeed =  252;//prov.
 
 uint16_t displaycounter0;
 uint16_t displaycounter1;
+
+uint16_t displayfenstercounter = 0; // counter fuer abgelaufene Zeit im Display-Fenster
+
 
 
 
@@ -418,8 +420,13 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
    } // if Funktionbit
    */
    
-   
-  
+/*   
+   if(displayfenstercounter)
+   {
+      displayfenstercounter--;
+      
+   }
+ */ 
    
    if (speed)
    {
@@ -534,7 +541,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                
             }
          }
-         
+         /*
          // Paket anzeigen
          if (INT0status & (1<<INT0_PAKET_B))
          {
@@ -544,7 +551,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
          {
             //           TESTPORT |= (1<<TEST1);
          }
-         
+         */
          
          if (tritposition < 17)
          {
@@ -566,6 +573,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
             {
                OSZI_A_LO(); 
                displaystatus |= (1<<DISPLAY_GO);
+               displayfenstercounter = MAXFENSTERCOUNT;
                
 // MARK: EQUAL
                if (lokadresseA && ((rawfunktionA == rawfunktionB) && (rawdataA == rawdataB) && (lokadresseA == lokadresseB))) // Lokadresse > 0 und Lokadresse und Data OK
@@ -870,6 +878,34 @@ int main (void)
       wdt_reset();
       {
          
+         if((displaystatus & (1<<DISPLAY_GO)) && displayfenstercounter)
+         {
+            displaystatus &= ~(1<<DISPLAY_GO);
+            displayfenstercounter = 0;
+            if (DISPLAY)
+            {
+               OSZI_B_LO();
+               char_x=100;
+               char_y = 1;
+               //display_write_int(lcdcounter,1);
+               display_write_sec_min(lcdcounter,1);
+               OSZI_B_HI();
+               lcdcounter++;
+               /*
+               char_x = RANDLINKS;
+               char_y = 3;
+               display_write_str("speedcode:",1);
+               display_write_int(displaydata[SPEEDCODE],1);
+               display_write_str(" ",1);
+               display_write_str("speed:",1);
+               display_write_int(displaydata[SPEED],1);
+                */
+            }
+
+            
+         }
+            
+         
          
          if(lokstatus & (1<<FUNKTIONBIT))
          {
@@ -962,7 +998,7 @@ int main (void)
       loopcount0++;
       if (loopcount0>=refreshtakt)
       {
-         OSZI_B_LO();
+         //OSZI_B_LO();
          //OSZIATOG;
          //LOOPLEDPORT ^= (1<<LOOPLED); 
          
@@ -977,27 +1013,9 @@ int main (void)
              if (displaycounter1 > MAXLOOP1)
              {
                 displaycounter1=0;
-                LOOPLEDPORT ^= (1<<LOOPLED);
+                //LOOPLEDPORT ^= (1<<LOOPLED);
                 counter++;
-                if (DISPLAY)
-                {
-                   OSZI_B_LO();
-                   char_x=100;
-                   char_y = 1;
-                   //display_write_int(lcdcounter,1);
-                   display_write_sec_min(lcdcounter,1);
-                   OSZI_B_HI();
-                   lcdcounter++;
-                   
-                   char_x = RANDLINKS;
-                   char_y = 3;
-                   display_write_str("speedcode:",1);
-                   display_write_int(displaydata[SPEEDCODE],1);
-                   display_write_str(" ",1);
-                   display_write_str("speed:",1);
-                   display_write_int(displaydata[SPEED],1);
-                }
-/*
+ /*
                 char_x=80;
                 char_y = 4;
                 display_write_sec_min(lcdcounter, 1);
@@ -1085,7 +1103,7 @@ int main (void)
             //OSZIAHI;
          }
       */   
-         OSZI_B_HI();
+         //OSZI_B_HI();
       }  // loopcount0>=refreshtakt
       
       //OSZIAHI;

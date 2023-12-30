@@ -54,7 +54,7 @@
 // bits displaystatus
 #define DISPLAY_GO   7
 
-
+#define MAXFENSTERCOUNT  1000
 
 // Pins
 #define FUNKTIONOK   2
