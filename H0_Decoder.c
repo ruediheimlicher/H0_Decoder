@@ -306,7 +306,7 @@ void slaveinit(void)
    }
 
    maxspeed = speedlookup[14];
-   minspeed = speedlookup[0];
+   minspeed = speedlookup[1];
    /*
    // TWI
    DDRC |= (1<<5);   //Pin 0 von PORT C als Ausgang (SCL)
@@ -382,7 +382,7 @@ ISR(INT0_vect)
       waitcounter = 0;
       tritposition = 0;
       funktion = 0;
-      OSZI_A_HI();
+      //OSZI_A_HI();
       
    } 
    
@@ -395,7 +395,7 @@ ISR(INT0_vect)
       waitcounter = 0;
  //     OSZIALO;
    }
-   OSZI_A_HI();
+   //OSZI_A_HI();
 }
 
 // MARK: ISR Timer2
@@ -439,6 +439,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
      // OSZI_B_LO();
       motorPWM++;
    }
+   
    if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
       MOTORPORT |= (1<<pwmpin);      
@@ -577,7 +578,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
             }
             else if (INT0status & (1<<INT0_PAKET_B)) // zweites Paket, Werte testen
             {
-               OSZI_A_LO(); 
+               //OSZI_A_LO(); 
                displaystatus |= (1<<DISPLAY_GO);
                displayfenstercounter = MAXFENSTERCOUNT;
                
@@ -655,7 +656,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                      {  
                         
                         lokstatus &= ~(1<<RICHTUNGBIT); // Vorgang Richtungsbit wieder beenden, 
-// MARK: speed           
+        
                          {
                            
                             
@@ -716,13 +717,14 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                                  
                            }
                             //OSZI_B_HI();
-                           
+      // MARK: speed                            
                             newspeed = speedlookup[speedcode]; // zielwert
                             
+                            // Startbedingung
                             if(speedcode && (speedcode ==1) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
                             {
                                
-                                 startspeed = speedlookup[speedcode] + STARTIMPULS; // kleine Zugabe
+                              startspeed = speedlookup[speedcode] + STARTIMPULS; // kleine Zugabe
                                
                                lokstatus |= (1<<STARTBIT);
                 
@@ -731,12 +733,13 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                             
                            oldspeed = speed; // behalten
                         
-                           speedintervall = (newspeed - oldspeed)>>2; // 4 teile
-                            if(speedintervall == 0)
+                            
+                           speedintervall = (newspeed - speed)>>2; // 4 teile
+                            if((speedintervall == 0) )
                             {
-                               OSZI_B_LO();
-                               //speedintervall = 1;
-                               OSZI_B_HI();
+                               //OSZI_B_LO();
+                               speedintervall = 1;
+                               //OSZI_B_HI();
                             }
                            
                            
@@ -748,6 +751,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                             else
                             {
                                lokstatus &= ~(1<<RUNBIT); // lok steht still
+                               
                             }
                            
                         }
@@ -968,7 +972,7 @@ int main (void)
             
 // MARK: speed var
             // speed var
-            if((newspeed > oldspeed)) // beschleunigen, speedintervall positiv
+            if((newspeed > speed)) // beschleunigen, speedintervall positiv
             {
                //OSZI_B_LO();
                if(speed < (newspeed - speedintervall))
@@ -989,26 +993,41 @@ int main (void)
                {
                   speed = newspeed;
                }
-               //OSZI_B_HI();
+               //OSZI_A_HI();
                
             }
-            else if((newspeed < oldspeed)) // bremsen, speedintervall negativ
+            else if((newspeed < speed)) // bremsen, speedintervall negativ
             {
-               //OSZI_B_LO();
+               OSZI_A_LO();
                
+               //if((speed > newspeed ) && ((speed + 2*speedintervall) > 0))
                
-               if((speed > newspeed ) && ((speed + 2*speedintervall) > minspeed))
-               
+                 if((speed + 2*speedintervall) > 0)
                {
                   speed += 2*speedintervall;
+                  
+                  if(speed < minspeed)
+                  {
+                     if(newspeed == 0) // Motor soll abstellen
+                     {
+                        OSZI_A_HI();
+                        speed = 0; // Motor OFF
+                     }
+       
+                     
+                     //newspeed = 0;
+                     //speed = 0;
+                     //speedintervall = 0;
+                  }
+
                   
                }
                else 
                {
                   speed = newspeed;
-  
+    
                }
-               //OSZI_B_HI();
+               
             }
             displaydata[SPEED] = speed;
             // end speed var
