@@ -657,16 +657,21 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                         lokstatus &= ~(1<<RICHTUNGBIT); // Vorgang Richtungsbit wieder beenden, 
 // MARK: speed           
                          {
+                           
+                            
                            switch (deflokdata)
                            {
                               case 0:
+                                 
                                  speedcode = 0;
                                  lokstatus &= ~(1<<STARTBIT);
                                  break;
                               case 0x0C:
+                                 
                                  speedcode = 1;
                                  break;
                               case 0x0F:
+                                 
                                  speedcode = 2;
                                  break;
                               case 0x30:
@@ -710,26 +715,30 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                                  break;
                                  
                            }
-                           //speed = speedlookup[speedcode];
+                            //OSZI_B_HI();
+                           
                             newspeed = speedlookup[speedcode]; // zielwert
                             
                             if(speedcode && (speedcode ==1) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
                             {
+                               
                                  startspeed = speedlookup[speedcode] + STARTIMPULS; // kleine Zugabe
                                
                                lokstatus |= (1<<STARTBIT);
-                            }
-                            //OSZI_B_LO();
+                
+                            }// ok
+                            //
                             
                            oldspeed = speed; // behalten
                         
-                           speedintervall = (newspeed - speed)>>2; // 4 teile
+                           speedintervall = (newspeed - oldspeed)>>2; // 4 teile
                             if(speedintervall == 0)
                             {
-                               speedintervall = 1;
+                               OSZI_B_LO();
+                               //speedintervall = 1;
+                               OSZI_B_HI();
                             }
                            
-                           // newspeed = speedlookup[speedcode]; // zielwert
                            
                             
                             if(speedcode > 0)
@@ -957,7 +966,7 @@ int main (void)
             
             //OSZI_B_LO();
             
-            // MARK: speed var
+// MARK: speed var
             // speed var
             if((newspeed > oldspeed)) // beschleunigen, speedintervall positiv
             {
@@ -988,15 +997,16 @@ int main (void)
                //OSZI_B_LO();
                
                
-               if((speed > newspeed) && ((speed + 2*speedintervall) > (minspeed + 2*speedintervall)))
-               
+               if((speed > newspeed ) && ((speed + 2*speedintervall) > minspeed))
                
                {
                   speed += 2*speedintervall;
+                  
                }
                else 
                {
                   speed = newspeed;
+  
                }
                //OSZI_B_HI();
             }
