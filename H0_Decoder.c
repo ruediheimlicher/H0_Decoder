@@ -67,6 +67,9 @@ uint8_t  LOK_ADRESSE = 0xCC; //	11001100	Trinär
 #define INT0_FALLING		1
 
 
+volatile uint8_t   loopstatus=0x00;            
+
+
 void lcd_puts(const char *s);
 
 // EADOGM
@@ -316,6 +319,8 @@ void slaveinit(void)
 
    maxspeed = speedlookup[14];
    minspeed = speedlookup[1];
+   
+ //  loopstatus |= (1<<FIRSTRUNBIT);
 /*
    // TWI
    DDRC |= (1<<5);   //Pin 0 von PORT C als Ausgang (SCL)
@@ -324,7 +329,7 @@ void slaveinit(void)
    PORTC |= (1<<4);   //   ON
 */
    
- //  if (DISPLAY)
+   if (DISPLAY)
    {
       spi_init();
       _delay_ms(5);
@@ -925,12 +930,50 @@ int main (void)
       OSZI_B_LO();
       // Timing: loop: 40 us, takt 85us, mit if-teil 160 us
       wdt_reset();
-      {
+      
+      
+      
         
+         // firstrun
+         loopcount0++;
+      
+      if(loopstatus & (1<<FIRSTRUNBIT))
+      {
+         if (loopcount0>=0xFFFE)
+         {
+            //OSZI_B_LO();
+            //OSZIATOG;
+            //LOOPLEDPORT ^= (1<<LOOPLED); 
+            
+            loopcount0=0;
+            
+            LOOPLEDPORT ^= (1<<LOOPLED); 
+            
+            loopcount0=0;
+            
+            // Takt for display
+            displaycounter1++;
+            if (displaycounter1 > 0xFFFE)
+            {
+               displaycounter1=0;
+               //LOOPLEDPORT ^= (1<<LOOPLED);
+               counter++;
+               
+               int0_init();
+               sei();
+               loopstatus &= ~(1<<FIRSTRUNBIT);
+               loopstatus |= (1<<RUNBIT);
+            }
+         }
+         
+      }// end firstrun
          
          
          
          
+         
+         
+         {  
          
          
          

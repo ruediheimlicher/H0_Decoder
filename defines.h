@@ -78,6 +78,10 @@
 #define LEDPWM          50
 
 
+// loopstatus
+#define FIRSTRUNBIT     0
+#define LOOPBIT         1
+
 #define ADDRESSBIT   0
 #define STARTBIT        1 // Startimpuls
 #define DATABIT      2
