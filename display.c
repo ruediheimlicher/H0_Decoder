@@ -220,6 +220,7 @@ void lcd_command(uint8_t cmd) {
 
 void setlogscreen(void)
 {
+   display_clear();
    resetRegister();
    posregister[0][0] = itemtab[5] | (1 << 8);// Laufzeit Anzeige
    char_x=RANDLINKS;
@@ -243,6 +244,9 @@ void setlogscreen(void)
    display_write_int(LOK_ADRESSE,1);
    display_write_str(" ",1);
    display_write_hex(LOK_ADRESSE,1);
+   //display_go_to(10,4);
+   //display_write_propchar('A',1);
+
    /*
    char_x = 0;
    char_y = 3;
@@ -1173,6 +1177,35 @@ uint8_t display_write_byte(unsigned cmd_data, unsigned char data)
 }
 
 //##############################################################################################
+void display_write_cmd(unsigned cmd_data)
+{
+   
+   SPI_CS_LO();
+   SPI_A0_LO(); // cmd
+   SPDR = cmd_data;
+   while((!(SPSR & (1<<SPIF))) && spicounter);
+   _delay_us(1);
+   
+   SPI_CS_HI();
+}
+
+//##############################################################################################
+void display_write_data(unsigned data)
+{
+   
+   SPI_CS_LO();
+   SPI_A0_HI(); // cmd
+   SPDR = data;
+   while((!(SPSR & (1<<SPIF))) && spicounter);
+   _delay_us(1);
+   
+   SPI_CS_HI();
+}
+
+
+
+
+//##############################################################################################
 //Init LC-Display
 //
 //##############################################################################################
@@ -1288,7 +1321,7 @@ void display_clear()
          }
          else
          {
-            display_write_byte(0,0x00);
+            display_write_byte(CMD,0x00);
          }
 		}
 	}

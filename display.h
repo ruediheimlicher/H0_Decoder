@@ -149,6 +149,11 @@ const uint8_t PROGMEM  expoarray25[3][26] ={
 };
 
 uint8_t  display_init(void);
+
+void display_write_cmd(unsigned cmd_data);
+void display_write_data(unsigned data);
+
+
 void display_mem(PGM_P pointer);
 void display_clear(void);
 void display_go_to (unsigned char, unsigned char);

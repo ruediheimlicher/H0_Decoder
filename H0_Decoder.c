@@ -198,7 +198,8 @@ uint8_t speedlookuptable[10][15] =
    {0,7,14,21,28,35,42,50,57,64,71,78,85,92,100},
    {0,33,37,40,44,47,51,55,58,62,65,69,72,76,80},
    
-   {0,41,42,44,47,51,56,61,67,74,82,90,99,109,120},
+   //{0,41,42,44,47,51,56,61,67,74,82,90,99,109,120},
+   {0,11,15,19,26,34,43,55,68,82,98,116,136,157,180},
    {0,41,43,45,49,54,60,66,74,82,92,103,114,127,140},
    {0,41,44,48,53,59,67,77,87,99,113,128,144,161,180},
    {0,42,45,50,57,65,75,87,101,116,134,153,173,196,220},
@@ -214,7 +215,7 @@ uint16_t speedchangetakt = 0x350; // takt fuer beschleunigen/bremsen
 
 volatile uint8_t loktyptable[4];
 
-volatile uint8_t speedindex = 7;
+volatile uint8_t speedindex = 5;
 
 volatile uint8_t   maxspeed =  252;//prov.
 volatile uint8_t   minspeed =  0;
@@ -226,7 +227,7 @@ uint16_t displayfenstercounter = 0; // counter fuer abgelaufene Zeit im Display-
 
 
 
-
+void displayfensterfunction(void);
 
 
 void spi_init(void) // SPI-Pins aktivieren
@@ -237,7 +238,7 @@ void spi_init(void) // SPI-Pins aktivieren
    //set SS to high
    PORTB |= (1<<PB2);
    //enable master SPI at clock rate Fck/2
-   SPCR = (1<<SPE)|(1<<MSTR);//|(1<<SPR0);
+   SPCR = (1<<SPE)|(1<<MSTR);
    SPSR |= (1<<SPI2X);
 }
 
@@ -323,28 +324,16 @@ void slaveinit(void)
    PORTC |= (1<<4);   //   ON
 */
    
-   if (DISPLAY)
+ //  if (DISPLAY)
    {
       spi_init();
       _delay_ms(5);
       display_init();
+      _delay_ms(5);
    }
    
    
    //LOOPLEDPORT |=(1<<LOOPLED);
-}
-
-
-
-
-void int0_init(void)
-{
-   EICRA |= (1 << ISC00) | (1 << ISC01);  // Trigger interrupt on rising edge
-   EIMSK |= (1 << INT0);  // Enable external interrupt INT0
-
- //  INT0status |= (1<<INT0_RISING);
-   INT0status = 0;
-   INT0status |= (1<<INT0_WAIT);
 }
 
 
@@ -367,103 +356,124 @@ void timer2 (uint8_t wert)
 	OCR2A = wert;					//Setzen des Compare Registers auf HI-impulsdauer
 } 
 
+
+
+void int0_init(void)
+{
+   EICRA |= (1 << ISC00) | (1 << ISC01);  // Trigger interrupt on rising edge
+   EIMSK |= (1 << INT0);  // Enable external interrupt INT0
+
+ //  INT0status |= (1<<INT0_RISING);
+   INT0status = 0;
+   INT0status |= (1<<INT0_WAIT);
+}
+
 // MARK:  INT0
 ISR(INT0_vect) 
 {
    //OSZI_A_LO();
-   if (INT0status == 0) // neue Daten beginnen
+   //if(displayfenstercounter%4 == 0)
    {
-      displaystatus &= ~(1<<DISPLAY_GO);
-      //OSZI_A_LO(); 
-      INT0status |= (1<<INT0_START);
-      INT0status |= (1<<INT0_WAIT); // delay, um Wert des Eingangs zum richtigen Zeitpunkt zu messen
+      //OSZI_B_LO();
       
-      INT0status |= (1<<INT0_PAKET_A); // erstes Paket lesen
-      //OSZIPORT &= ~(1<<PAKETA); 
-      //TESTPORT &= ~(1<<TEST2);
+      if (INT0status == 0) // neue Daten beginnen
+      {
+         displaystatus &= ~(1<<DISPLAY_GO); // displayfenster end
+         SYNC_HI();
+         //OSZI_A_HI(); 
+         INT0status |= (1<<INT0_START);
+         INT0status |= (1<<INT0_WAIT); // delay, um Wert des Eingangs zum richtigen Zeitpunkt zu messen
+         
+         INT0status |= (1<<INT0_PAKET_A); // erstes Paket lesen
+         //OSZIPORT &= ~(1<<PAKETA); 
+         
+         pausecounter = 0; // pausen detektieren, reset fuer jedes HI
+         abstandcounter = 0;// zweites Paket detektieren, 
+         
+         waitcounter = 0;
+         tritposition = 0;
+         funktion = 0;
+         //OSZI_A_HI();
+         
+      } 
       
- //     OSZIBLO;
-      
-      
-      pausecounter = 0; // pausen detektieren, reset fuer jedes HI
-      abstandcounter = 0;// zweites Paket detektieren, 
-      
-      waitcounter = 0;
-      tritposition = 0;
-      funktion = 0;
+      else // Data im Gang, neuer Interrupt
+      {
+         INT0status |= (1<<INT0_WAIT);
+         
+         pausecounter = 0;
+         abstandcounter = 0; 
+         waitcounter = 0;
+         //     OSZIALO;
+      }
       //OSZI_A_HI();
-      
-   } 
-   
-   else // Data im Gang, neuer Interrupt
-   {
-      INT0status |= (1<<INT0_WAIT);
-      
-      pausecounter = 0;
-      abstandcounter = 0; 
-      waitcounter = 0;
- //     OSZIALO;
+      //OSZI_B_HI();
    }
-   //OSZI_A_HI();
+   /*
+   else
+   {
+      INT0status = 0;
+   }
+   */
 }
+
 
 // MARK: ISR Timer2
 
 ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
 {
    
+   
    //OSZIATOG;
    //return;
    
    /*
-   if(lokstatus & (1<<FUNKTIONBIT))
-   {
-      dimmcounter++;
-      
-      if(dimmcounter > LEDPWM)
-      {
-         LAMPEPORT &= ~(1<<ledonpin); // Lampe-PWM  OFF
-         
-      }
-      
-      if(dimmcounter > 253)
-      {
-         LAMPEPORT |= (1<<ledonpin); // Lampe-PWM  ON, neuer Impuls
-      dimmcounter = 0;
-      }
-      
-      
-   } // if Funktionbit
-   */
+    if(lokstatus & (1<<FUNKTIONBIT))
+    {
+    dimmcounter++;
+    
+    if(dimmcounter > LEDPWM)
+    {
+    LAMPEPORT &= ~(1<<ledonpin); // Lampe-PWM  OFF
+    
+    }
+    
+    if(dimmcounter > 253)
+    {
+    LAMPEPORT |= (1<<ledonpin); // Lampe-PWM  ON, neuer Impuls
+    dimmcounter = 0;
+    }
+    
+    
+    } // if Funktionbit
+    */
    
-/*   
-   if(displayfenstercounter)
-   {
-      displayfenstercounter--;
-      
-   }
- */ 
    
-   OSZI_B_LO();
+   //OSZI_B_LO();
    if (speed)
    {
-     // OSZI_B_LO();
+      // OSZI_B_LO();
       motorPWM++;
    }
    
    if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
-      MOTORPORT |= (1<<pwmpin);      
+      MOTORPORT |= (1<<pwmpin);  // Motor OFF    
    }
    
    if (motorPWM >= 254) //ON, neuer Motorimpuls
    {
-       MOTORPORT &= ~(1<<pwmpin);
+      MOTORPORT &= ~(1<<pwmpin);
       motorPWM = 0;
    }
-   OSZI_B_HI();
+   //OSZI_B_HI();
    
-  
+   if (displayfenstercounter > 8)
+   {
+      //displayfensterfunktion();
+      //displayfenstercounter=0;
+   }
+   
    // MARK: TIMER0 TIMER0_COMPA INT0
    if (INT0status & (1<<INT0_WAIT))
    {
@@ -539,7 +549,6 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                
             }
             
-            
             else
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
@@ -587,16 +596,23 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
             }
             else if (INT0status & (1<<INT0_PAKET_B)) // zweites Paket, Werte testen
             {
-               //OSZI_A_LO(); 
+               SYNC_LO();
                displaystatus |= (1<<DISPLAY_GO);
-               displayfenstercounter = MAXFENSTERCOUNT;
+               // // Displayfenster begin
+               if(displayfenstercounter++ > 4)
+               {
+                  displaystatus |= (1<<DISPLAY_GO);
+                  displayfenstercounter=0;
+               }
+               //displayfenstercounter = MAXFENSTERCOUNT;
                
                // MARK: EQUAL
                if (lokadresseA && ((rawfunktionA == rawfunktionB) && (rawdataA == rawdataB) && (lokadresseA == lokadresseB))) // Lokadresse > 0 und Lokadresse und Data OK
                {
                   if (lokadresseB == LOK_ADRESSE)
                   {
-                     SYNC_LO();
+                     
+                     
                      //OSZI_A_LO();
                      // Daten uebernehmen
                      
@@ -765,7 +781,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                            
                         }
                      }
-                     SYNC_HI();
+                     //SYNC_HI();
                   }
                   else 
                   {
@@ -774,7 +790,8 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                      INT0status = 0;
                      return;
                   }
-               }
+                  
+               }// if (lokadresseA &&...
                else 
                {
                   lokstatus &= ~(1<<ADDRESSBIT);
@@ -791,15 +808,16 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                {
                   //               TESTPORT |= (1<<TEST2);
                }
+               //SYNC_HI();
             } // End Paket B
          }
-         //OSZI_A_HI();
+        // OSZI_B_HI();
       } // waitcounter > 2
    } // if INT0_WAIT
    
    if (INPIN & (1<<DATAPIN)) // Pin HI, input   im Gang
    {
-//      HIimpulsdauer++; // zaehlen
+      //      HIimpulsdauer++; // zaehlen
    }
    else  // LO, input fertig, Bilanz
    {
@@ -810,9 +828,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
       else //if (abstandcounter ) // Paket 2
       {
          abstandcounter = 0;
-           // OSZIAHI;
-         //     OSZIPORT |= (1<<PAKETA); 
-         //    OSZIPORT &= ~(1<<PAKETB);   
+         // OSZIAHI;
       }
       
       if (pausecounter < 120)
@@ -831,7 +847,12 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
    //OSZI_B_HI();
 }
 
-
+void displayfensterfunction(void)
+{
+   
+   displayfenstercounter = 0;
+   _delay_ms(2);
+}
 
 
 int main (void) 
@@ -890,7 +911,6 @@ int main (void)
  //  _delay_ms(100);
    
    uint8_t counter = 0;
-   uint8_t byte = 0;
    uint16_t lcdcounter = 0;
    
    
@@ -901,25 +921,43 @@ int main (void)
    }
    
 	while (1)
-   {   
+   {  
+      OSZI_B_LO();
       // Timing: loop: 40 us, takt 85us, mit if-teil 160 us
       wdt_reset();
       {
+        
          
+         
+         
+         
+         
+         
+         
+         // MARK: display       
          if((displaystatus & (1<<DISPLAY_GO)) ) //&& displayfenstercounter)
          {
             displaystatus &= ~(1<<DISPLAY_GO);
-            displayfenstercounter = 0;
+        //    displayfenstercounter = 0;
+            //display_write_cmd(0xB1);
+            //display_write_data(0xB1);
+            //display_go_to(10,4);
+            //display_write_data(lcdcounter++);
+            
+            //display_write_int(lcdcounter,1);
+            
             if (DISPLAY)
             {
                OSZI_B_LO();
                char_x=100;
                char_y = 1;
+               //OSZI_B_HI();
+               
                //display_write_int(lcdcounter,1);
-               display_write_sec_min(lcdcounter,1);
+               //display_write_sec_min(lcdcounter,1);
                OSZI_B_HI();
                lcdcounter++;
-               
+               /*
                char_x = RANDLINKS;
                char_y = 3;
                display_write_str("speedcode:",1);
@@ -927,11 +965,11 @@ int main (void)
                display_write_str(" ",1);
                display_write_str("speed:",1);
                display_write_int(displaydata[SPEED],1);
-                
+                */
             }
 
             
-         }
+         } //  if((displaystatus & (1<<DISPLAY_GO)
            
          
          
@@ -991,9 +1029,7 @@ int main (void)
                {
                   if((startspeed > speed) && (lokstatus & (1<<STARTBIT))) // Startimpuls
                   {
-                     
                      speed = startspeed;
-                     
                      lokstatus &= ~(1<<STARTBIT);
                   }
                   else 
@@ -1005,8 +1041,7 @@ int main (void)
                {
                   speed = newspeed;
                }
-               //OSZI_A_HI();
-               
+               //OSZI_B_HI();
             }
             else if((newspeed < speed)) // bremsen, speedintervall negativ
             {
@@ -1018,18 +1053,13 @@ int main (void)
                {
                   speed += 2*speedintervall;
                   
-                  if(speed < minspeed)
+                  if(speed < minspeed/2)
                   {
                      if(newspeed == 0) // Motor soll abstellen
                      {
                         //OSZI_A_HI();
                         speed = 0; // Motor OFF
                      }
-       
-                     
-                     //newspeed = 0;
-                     //speed = 0;
-                     //speedintervall = 0;
                   }
 
                   
@@ -1039,7 +1069,7 @@ int main (void)
                   speed = newspeed;
     
                }
-               
+               //OSZI_A_HI();
             }
             displaydata[SPEED] = speed;
             // end speed var
@@ -1069,6 +1099,10 @@ int main (void)
                 displaycounter1=0;
                 //LOOPLEDPORT ^= (1<<LOOPLED);
                 counter++;
+                
+ //               int0_init();
+ //               sei();
+                //EIMSK |= (1 << INT0); 
  /*
                 char_x=80;
                 char_y = 4;
@@ -1159,8 +1193,7 @@ int main (void)
       */   
          //OSZI_B_HI();
       }  // loopcount0>=refreshtakt
-      
-      //OSZIAHI;
+      OSZI_B_HI();
    }//while
 
 
