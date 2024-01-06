@@ -254,13 +254,14 @@ void slaveinit(void)
 
    //OSZIPORT |= (1<<INT_0);   //
    //OSZIDDR |= (1<<INT_0);   //Pin 7 von PORT D als Ausgang fuer SOSZI B
-/*
+
+   
    OSZIDDR |= (1<<PAKETA);
    OSZIPORT |= (1<<PAKETA);   //PAKETA
       //
    OSZIDDR |= (1<<PAKETB); 
    OSZIPORT |= (1<<PAKETB);   //PAKETB
- */  
+   
    displaydata[0] = 3;
    displaydata[1] = 44;
    
@@ -282,10 +283,10 @@ void slaveinit(void)
  	LCD_DDR |= (1<<LCD_ENABLE_PIN);	//Pin 6 von PORT B als Ausgang fuer LCD
 	LCD_DDR |= (1<<LCD_CLOCK_PIN);	//Pin 7 von PORT B als Ausgang fuer LCD
 */
-   
+   /*
    TESTDDR |= (1<<TEST0); // test0
    TESTPORT |= (1<<TEST0); // HI
-   
+   */
    MOTORDDR |= (1<<MOTORA_PIN);  // Output Motor A 
    MOTORPORT |= (1<<MOTORA_PIN); // HI
    
@@ -412,7 +413,7 @@ ISR(INT0_vect)
 ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
 {
    
-   //OSZIATOG;
+   //OSZI_A_TOGG();
    //return;
    
    /*
@@ -444,7 +445,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
    }
  */ 
    
-   OSZI_B_LO();
+   //OSZI_B_LO();
    if (speed)
    {
      // OSZI_B_LO();
@@ -461,16 +462,16 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
        MOTORPORT &= ~(1<<pwmpin);
       motorPWM = 0;
    }
-   OSZI_B_HI();
+   //OSZI_B_HI();
    
   
    // MARK: TIMER0 TIMER0_COMPA INT0
    if (INT0status & (1<<INT0_WAIT))
    {
       waitcounter++; 
-      if (waitcounter >1)// Impulsdauer > minimum, nach einer gewissen Zeit den Stautus abfragen
+      if (waitcounter >2)// Impulsdauer > minimum, nach einer gewissen Zeit den Stautus abfragen
       {
-         //OSZI_A_LO();
+         OSZI_A_LO();
          //OSZIAHI;
          INT0status &= ~(1<<INT0_WAIT);
          if (INT0status & (1<<INT0_PAKET_A))
@@ -793,7 +794,7 @@ ISR(TIMER2_COMPA_vect) // // Schaltet Impuls an MOTOROUT LO wenn speed
                }
             } // End Paket B
          }
-         //OSZI_A_HI();
+         OSZI_A_HI();
       } // waitcounter > 2
    } // if INT0_WAIT
    
