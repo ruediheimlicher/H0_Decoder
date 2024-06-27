@@ -44,8 +44,12 @@
 #define STATUSDDR    DDRC
 #define STATUSPIN    PINC
 
+#define I2CPORT   PORTC
+#define I2CDDR    DDRC
+
 // Pins
 #define TEMPERATURPIN  0 // Diode gegen masse
+
 #define FUNKTIONOK   2
 #define ADDRESSOK    3
 #define DATAOK       4
@@ -67,12 +71,14 @@
 
 
 
-#define ADDRESSBIT   0
-#define DATABIT      2
-#define FUNKTIONBIT  4
-#define OLDRICHTUNGBIT  5
-#define RICHTUNGBIT  6
-#define CHANGEBIT      7
+#define ADDRESSBIT      0
+#define STARTBIT        1 // Startimpuls
+#define DATABIT         2
+#define PROGBIT         3 // Programmiermodus
+#define FUNKTIONBIT     4
+#define RUNBIT          5
+#define RICHTUNGBIT     6
+#define LOK_CHANGEBIT       7  
 
 #define TRIT0 0
 #define TRIT1 1
@@ -98,6 +104,8 @@
 
 #define LAMPEA_PIN          3
 #define LAMPEB_PIN          4
+#define LED_CHANGEBIT       7  
+
 #define MEM             0 // Eingang fuer last richtung (Kondensator)
 
 #define ADC_PIN 0       // Temperaturmessung Diode Anode mit Pullup
