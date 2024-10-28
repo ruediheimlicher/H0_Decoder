@@ -39,7 +39,11 @@
 
 //***********************************
 						
-uint8_t  LOK_ADRESSE = 0xCC; //	11001100	TrinŠr
+//uint8_t  LOK_ADRESSE = 0xCC; //	11001100	TrinŠr
+
+// test
+uint8_t  LOK_ADRESSE = 0xF0; //   11001100   TrinŠr
+
 //									
 //***********************************
 
@@ -885,7 +889,7 @@ int main (void)
 	
    
    
-//   timer2(4);
+   //   timer2(4);
 	
 	//initADC(TASTATURPIN);
 	
@@ -959,31 +963,22 @@ int main (void)
             // Takt for display
             firstruncount1++;
             
-            //if (firstruncount1 >= 0xF0)
+            if (firstruncount1 >= 0xF0)
             {
-               OSZI_A_LO();
+               //OSZI_A_LO();
                //LOOPLEDPORT ^= (1<<LOOPLED);
                 int0_init();
                
                _delay_ms(2);
                 timer2(4);
                sei();
-               //loopstatus &= ~(1<<FIRSTRUNBIT);
+               loopstatus &= ~(1<<FIRSTRUNBIT);
                
                //loopstatus |= (1<<RUNBIT);
                //LOOPLEDPORT |=(1<<LOOPLED);
                //LOOPLEDDDR |= (1<<LOOPLED);
-               /*
-               LOOPLEDPORT |=(1<<LOOPLED);
-               _delay_ms(200);
-               LOOPLEDPORT &= ~(1<<LOOPLED);
-               _delay_ms(200);
-               LOOPLEDPORT |=(1<<LOOPLED);
-               _delay_ms(200);
-               LOOPLEDPORT &= ~(1<<LOOPLED);
-               _delay_ms(200);
-               */
-               OSZI_A_HI();
+             
+               //OSZI_A_HI();
             }
             //OSZI_A_HI();
          }
@@ -1148,33 +1143,16 @@ int main (void)
          if (loopcount0>=refreshtakt)
          {
             //OSZI_B_LO();
-            //OSZIATOG;
-            //LOOPLEDPORT ^= (1<<LOOPLED); 
-            
             loopcount0=0;
             
-            LOOPLEDPORT ^= (1<<LOOPLED); 
-            
-            loopcount0=0;
-            
+            loopcount0=0;            
             // Takt for display
             displaycounter1++;
             if (displaycounter1 > MAXLOOP1)
             {
                displaycounter1=0;
-               //LOOPLEDPORT ^= (1<<LOOPLED);
+               LOOPLEDPORT ^= (1<<LOOPLED);
                counter++;
-               
-               //               int0_init();
-               //               sei();
-               //EIMSK |= (1 << INT0); 
-               /*
-                char_x=80;
-                char_y = 4;
-                display_write_sec_min(lcdcounter, 1);
-                */      
-               //                lcd_gotoxy(16,1);
-               //                lcd_putint(lcdcounter);
             }
             
             if(lokstatus & (1<<LOK_CHANGEBIT)) // Motor-Pins tauschen
@@ -1185,10 +1163,8 @@ int main (void)
                   richtungpin = MOTORA_PIN;
                   //ledonpin = LAMPEB_PIN;
                   // ledoffpin = LAMPEA_PIN;
-                  
                   if(lokstatus & (1<<FUNKTIONBIT))
                   {
-                     
                      LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
                      LAMPEPORT |= (1<<LAMPEA_PIN); // Lampe A OFF
                   }
@@ -1197,19 +1173,14 @@ int main (void)
                      // beide lampen OFF
                      LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
                      LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
-                     
                   }
-                  
                }
                else // auch default
                {
                   pwmpin = MOTORA_PIN;
                   richtungpin = MOTORB_PIN;
-                  //ledonpin = LAMPEA_PIN;
-                  //ledoffpin = LAMPEB_PIN;
-                  if(lokstatus & (1<<FUNKTIONBIT))
+                   if(lokstatus & (1<<FUNKTIONBIT))
                   {
-                     
                      LAMPEPORT |= (1<<LAMPEB_PIN); // Lampe B OFF
                      LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
                   }
@@ -1222,9 +1193,7 @@ int main (void)
                   
                }
                MOTORPORT |= (1<<richtungpin); // Richtung setzen
-               
                lokstatus &= ~(1<<LOK_CHANGEBIT);
-               
             } // if changebit
             // Lampen einstellen
             if(ledstatus & (1<<LED_CHANGEBIT))
